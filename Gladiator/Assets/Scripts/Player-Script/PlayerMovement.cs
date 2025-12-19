@@ -1,96 +1,164 @@
 using UnityEngine;
 
+[RequireComponent(typeof(CharacterController))]
 public class PlayerMovement : MonoBehaviour
 {
     [Header("Movement Settings")]
-    public float walkSpeed = 4.0f;       
-    public float runSpeed = 8.0f;        // Maximum running speed
-    public float acceleration = 5.0f;    // Lower this to make the "speed up" take longer
-    public float deceleration = 10.0f;   // How fast to stop
-    public float turnSmoothTime = 0.1f;  
+    public float walkSpeed = 4f;
+    public float runSpeed = 8f;
+    public float acceleration = 12f;
+    public float deceleration = 16f;
+    public float rotationSpeed = 10f;
     public float gravity = -9.81f;
 
     [Header("References")]
     public Animator animator;
-    public Transform cam;
+    public Transform cameraTransform;
+    public PlayerLockOn lockOn;
+
+    // --- NEW: Flag to stop movement ---
+    [HideInInspector] 
+    public bool isAttacking = false; 
 
     private CharacterController controller;
-    private float turnSmoothVelocity;
-    private Vector3 velocity;      
-    private float currentSpeed;    // This holds the actual smooth speed (0.0 to 8.0)
+    private Vector3 verticalVelocity;
+    private float currentSpeed;
 
-    void Start()
+    void Awake()
     {
         controller = GetComponent<CharacterController>();
-
-        if (cam == null) cam = Camera.main.transform;
+        if (cameraTransform == null)
+            cameraTransform = Camera.main.transform;
 
         Cursor.lockState = CursorLockMode.Locked;
         Cursor.visible = false;
     }
 
+    void OnEnable()
+    {
+        currentSpeed = 0f;
+        verticalVelocity = Vector3.zero;
+        isAttacking = false;
+    }
+
     void Update()
     {
-        // 1. Get Input
-        float horizontal = Input.GetAxisRaw("Horizontal");
-        float vertical = Input.GetAxisRaw("Vertical");
-        Vector3 direction = new Vector3(horizontal, 0f, vertical).normalized;
-        
-        // Check if Shift is held
-        bool isShiftHeld = Input.GetKey(KeyCode.LeftShift);
+        // --------------------------------------------------
+        // 1. INPUT & STATE CHECK
+        // --------------------------------------------------
+        float h = Input.GetAxisRaw("Horizontal");
+        float v = Input.GetAxisRaw("Vertical");
+        Vector3 input = new Vector3(h, 0f, v).normalized;
 
-        // 2. Calculate Target Speed
-        // If we are pressing keys:
-        //    - If Shift is held -> Target is runSpeed (8)
-        //    - If Shift NOT held -> Target is walkSpeed (4)
-        // If no keys -> Target is 0
-        float targetSpeed = 0f;
-        if (direction.magnitude >= 0.1f)
+        // If we are attacking, force input to zero so we don't move
+        if (isAttacking) 
         {
-            targetSpeed = isShiftHeld ? runSpeed : walkSpeed;
-        }
-        
-        // 3. Smooth Acceleration (The "Magic" Part)
-        // This takes currentSpeed and slowly moves it towards targetSpeed
-        // This creates the "start slow and speed up" effect
-        if (direction.magnitude >= 0.1f)
-        {
-            currentSpeed = Mathf.MoveTowards(currentSpeed, targetSpeed, acceleration * Time.deltaTime);
-        }
-        else
-        {
-            currentSpeed = Mathf.MoveTowards(currentSpeed, 0f, deceleration * Time.deltaTime);
+            input = Vector3.zero;
         }
 
-        // 4. Rotate and Move
+        bool wantsToMove = input.magnitude > 0.1f;
+        bool running = Input.GetKey(KeyCode.LeftShift);
+
+        float targetSpeed = wantsToMove
+            ? (running ? runSpeed : walkSpeed)
+            : 0f;
+
+        // --------------------------------------------------
+        // 2. SPEED SMOOTHING
+        // --------------------------------------------------
+        float accel = wantsToMove ? acceleration : deceleration;
+        
+        // If attacking, stop instantly or decelerate fast? 
+        // Let's use normal deceleration so you don't "slide" on attack start
+        if (isAttacking) accel = deceleration * 2f; 
+
+        currentSpeed = Mathf.MoveTowards(
+            currentSpeed,
+            targetSpeed,
+            accel * Time.deltaTime
+        );
+
+        // --------------------------------------------------
+        // 3. ROTATION (Disable rotation if attacking!)
+        // --------------------------------------------------
+        if (!isAttacking)
+        {
+            if (lockOn != null && lockOn.CurrentTarget != null)
+            {
+                // LOCK-ON ROTATION (face enemy)
+                Vector3 toEnemy = lockOn.CurrentTarget.position - transform.position;
+                toEnemy.y = 0f;
+
+                if (toEnemy.sqrMagnitude > 0.001f)
+                {
+                    Quaternion targetRot = Quaternion.LookRotation(toEnemy);
+                    transform.rotation = Quaternion.Slerp(
+                        transform.rotation,
+                        targetRot,
+                        rotationSpeed * Time.deltaTime
+                    );
+                }
+            }
+            else if (wantsToMove)
+            {
+                // FREE ROTATION (camera-relative)
+                float targetAngle = Mathf.Atan2(input.x, input.z) * Mathf.Rad2Deg
+                                    + cameraTransform.eulerAngles.y;
+
+                Quaternion targetRot = Quaternion.Euler(0f, targetAngle, 0f);
+                transform.rotation = Quaternion.Slerp(
+                    transform.rotation,
+                    targetRot,
+                    rotationSpeed * Time.deltaTime
+                );
+            }
+        }
+
+        // --------------------------------------------------
+        // 4. MOVEMENT VECTOR
+        // --------------------------------------------------
+        Vector3 move = Vector3.zero;
+
+        // Only calculate movement direction if we actually have speed
         if (currentSpeed > 0.1f)
         {
-            // Only rotate if we are actually pressing keys
-            if (direction.magnitude >= 0.1f)
+            if (lockOn != null && lockOn.CurrentTarget != null)
             {
-                float targetAngle = Mathf.Atan2(direction.x, direction.z) * Mathf.Rad2Deg + cam.eulerAngles.y;
-                float angle = Mathf.SmoothDampAngle(transform.eulerAngles.y, targetAngle, ref turnSmoothVelocity, turnSmoothTime);
-                transform.rotation = Quaternion.Euler(0f, angle, 0f);
+                // STRAFING
+                Vector3 forward = transform.forward * v;
+                Vector3 right = transform.right * h;
+                move = (forward + right).normalized;
             }
-
-            // Move the character forward based on the smooth currentSpeed
-            Vector3 moveDir = transform.forward * currentSpeed;
-            controller.Move(moveDir * Time.deltaTime);
+            else
+            {
+                // FREE MOVE
+                move = transform.forward;
+            }
         }
 
-        // 5. Gravity
-        if (controller.isGrounded && velocity.y < 0)
+        move *= currentSpeed;
+
+        // --------------------------------------------------
+        // 5. GRAVITY (Always applies, even when attacking)
+        // --------------------------------------------------
+        if (controller.isGrounded)
         {
-            velocity.y = -2f; 
+            if (verticalVelocity.y < 0f)
+                verticalVelocity.y = -2f;
         }
-        velocity.y += gravity * Time.deltaTime;
-        controller.Move(velocity * Time.deltaTime);
 
-        // 6. Update Animator
+        verticalVelocity.y += gravity * Time.deltaTime;
+
+        // --------------------------------------------------
+        // 6. APPLY MOVEMENT
+        // --------------------------------------------------
+        controller.Move((move + verticalVelocity) * Time.deltaTime);
+
+        // --------------------------------------------------
+        // 7. ANIMATION
+        // --------------------------------------------------
         if (animator != null)
         {
-            // Send the exact smooth speed value to the Animator
-            // 0 = Idle, 4 = Walk, 8 = Run
             animator.SetFloat("Speed", currentSpeed);
         }
     }

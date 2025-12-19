@@ -1,45 +1,69 @@
 using UnityEngine;
+using System.Collections.Generic;
 
 public class PlayerWeaponHandler : MonoBehaviour
 {
-    [Header("Setup")]
-    // Drag your 'WeaponSocket' object (under the hand bone) here
+    [Header("Dependencies")]
     public Transform weaponSocket;
+    public PlayerCombat playerCombat;
 
-    [Header("Testing Only")]
-    // Drag your Weapon Prefab (from Project window) here to test
+    [Header("Testing")]
     public GameObject weaponToEquip; 
+
+    // 1. DEFINE A STRUCT TO HOLD DATA
+    [System.Serializable]
+    public struct WeaponOffsetConfig
+    {
+        public string weaponTag;
+        public Vector3 positionOffset;
+        public Vector3 rotationOffset;
+    }
+
+    // 2. CREATE A LIST TO EDIT IN INSPECTOR
+    [Header("Weapon Alignment Settings")]
+    public List<WeaponOffsetConfig> weaponOffsets;
 
     private GameObject currentWeaponInstance;
 
     void Start()
     {
-        // For testing: If we put a weapon in the slot, equip it immediately
-        if (weaponToEquip != null)
-        {
-            EquipWeapon(weaponToEquip);
-        }
+        if (weaponToEquip != null) EquipWeapon(weaponToEquip);
     }
 
-    // We make this public so other scripts (like your future UI/Shop) can call it
     public void EquipWeapon(GameObject weaponPrefab)
     {
-        // 1. If we are already holding something, destroy it first
-        if (currentWeaponInstance != null)
-        {
-            Destroy(currentWeaponInstance);
-        }
+        // Cleanup old weapon
+        if (currentWeaponInstance != null) Destroy(currentWeaponInstance);
 
-        // 2. Spawn the new weapon
-        // We instantiate it at the socket's position and rotation
+        // Spawn weapon
         currentWeaponInstance = Instantiate(weaponPrefab, weaponSocket.position, weaponSocket.rotation);
-
-        // 3. "Glue" it to the socket
         currentWeaponInstance.transform.SetParent(weaponSocket);
 
-        // 4. Reset local coordinates just in case
-        // This ensures the handle snaps exactly to the socket center
-        currentWeaponInstance.transform.localPosition = Vector3.zero;
-        currentWeaponInstance.transform.localRotation = Quaternion.identity;
+        // ---------------------------------------------------------
+        // 3. APPLY CUSTOM OFFSETS BASED ON TAG
+        // ---------------------------------------------------------
+        
+        // Default values
+        Vector3 finalPos = Vector3.zero;
+        Quaternion finalRot = Quaternion.identity;
+
+        // Search the list for a matching tag
+        WeaponOffsetConfig config = weaponOffsets.Find(x => x.weaponTag == weaponPrefab.tag);
+
+        // If we found a match (checking if the tag is not null/empty to verify)
+        if (!string.IsNullOrEmpty(config.weaponTag))
+        {
+            finalPos = config.positionOffset;
+            finalRot = Quaternion.Euler(config.rotationOffset);
+        }
+
+        // Apply the settings
+        currentWeaponInstance.transform.localPosition = finalPos;
+        currentWeaponInstance.transform.localRotation = finalRot;
+
+        // ---------------------------------------------------------
+
+        // Notify combat script
+        playerCombat.EquipNewWeapon(currentWeaponInstance);
     }
 }
