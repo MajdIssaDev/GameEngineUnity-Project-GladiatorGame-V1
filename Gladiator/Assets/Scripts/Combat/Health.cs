@@ -1,66 +1,104 @@
 using UnityEngine;
+using UnityEngine.UI; // Required for UI Slider
 
 public class HealthScript : MonoBehaviour
 {
     public float currentHealth;
     [SerializeField] private float maxHealth;
     [SerializeField] private Stats stats;
-    [SerializeField] private EnemyHealthBar healthBar;
-    
-    void awake()
-    {
-        
-    }
+
+    [Header("UI References")]
+    // 1. This is for the PLAYER (The slider on the screen)
+    // Only the Player will have this assigned.
+    public Slider playerHudSlider; 
+
+    // 2. This is for the ENEMY (The floating bar above head)
+    // Only Enemies will have this component.
+    [SerializeField] private EnemyHealthBar enemyFloatingBar; 
     
     void Start()
     {
         currentHealth = maxHealth;
         stats = GetComponent<Stats>();
-        healthBar = GetComponentInChildren<EnemyHealthBar>();
+        
+        // Auto-find the floating bar (Common for enemies)
+        enemyFloatingBar = GetComponentInChildren<EnemyHealthBar>();
+
+        // Initialize UI
+        UpdateHealthUI();
     }
 
     void FixedUpdate()
     {
         if (currentHealth > 0 && currentHealth < maxHealth)
         {
-            currentHealth += stats.regenSpeed/50;
+            currentHealth += stats.regenSpeed / 50;
             if (currentHealth > maxHealth)
             {
                 currentHealth = maxHealth;
             }
+            // Update UI while regenerating
+            UpdateHealthUI();
         }
     }
 
     public void takeDamage(float damageAmount)
     {
-        float damage = damageAmount * (100/(100 + stats.defence)); // capped at 1
-        gameObject.GetComponent<HealthScript>().currentHealth -= damage;
-        if (this.gameObject.GetComponent<HealthScript>().currentHealth <= 0)
+        // 1. Calculate Mitigation
+        float damage = damageAmount * (100 / (100 + stats.defence));
+        
+        // 2. Apply Damage
+        currentHealth -= damage;
+        
+        if (currentHealth <= 0)
         {
-            this.gameObject.GetComponent<HealthScript>().currentHealth = 0;
-            //other.gameObject.GetComponent<PlayerLocomotion>().enabled = false;
-            Debug.Log($"{gameObject.name} is dead.");
+            currentHealth = 0;
+            Die();
         }
         
-        // 2. Tell it to wake up
-        if (healthBar != null)
+        // 3. Update Visuals
+        UpdateHealthUI();
+
+        // 4. Special Logic for Enemy Floating Text/Bar
+        if (enemyFloatingBar != null)
         {
-            healthBar.OnTakeDamage(); 
+            enemyFloatingBar.OnTakeDamage(damage); 
         }
     }
 
-    public void setMaxHealth(float maxHealth)
+    private void UpdateHealthUI()
     {
-        this.maxHealth = maxHealth;
+        // LOGIC: If I have a HUD slider assigned, I must be the player.
+        // If this variable is null, this code is skipped (so enemies don't crash).
+        if (playerHudSlider != null)
+        {
+            playerHudSlider.value = currentHealth / maxHealth;
+        }
     }
 
-    public float getMaxHealth()
+    private void Die()
     {
-        return maxHealth;
+        // 1. IMPORTANT: Check the Tag!
+        if (gameObject.CompareTag("Enemy"))
+        {
+            // 2. Tell the Manager we died
+            if (GameManager.Instance != null) 
+            {
+                GameManager.Instance.EnemyDefeated();
+            }
+             
+            // 3. Delete the enemy
+            Destroy(gameObject);
+        }
+        else
+        {
+            // Player death logic (Restart level, Game Over screen, etc.)
+            Debug.Log("Player Died");
+        }
     }
 
-    public void setCurrentHealth(float currentHealth)
-    {
-        this.currentHealth = currentHealth;
-    }
+    // Setters/Getters
+    public void setMaxHealth(float maxHealth) => this.maxHealth = maxHealth;
+    public float getMaxHealth() => maxHealth;
+    public void setCurrentHealth(float currentHealth) => this.currentHealth = currentHealth;
 }

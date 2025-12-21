@@ -8,65 +8,96 @@ public class PlayerCombat : MonoBehaviour
     
     [SerializeField] Stats stats;
     private WeaponDamage currentWeaponScript; 
+    
+    // Store the default (Axe/Unarmed) controller here so we can switch back to it
+    private RuntimeAnimatorController baseController; 
+
     private bool isAttacking = false;
-    private float nextAttackTime = 0f; // Track when the next attack is allowed
+    private float nextAttackTime = 0f; 
 
     void Start()
     {
-        // Automatically find the Stats script if not assigned
         if (stats == null) stats = GetComponent<Stats>();
+        
+        // SAVE the original controller (The one assigned in Inspector)
+        baseController = animator.runtimeAnimatorController;
     }
 
-    public void EquipNewWeapon(GameObject newWeaponObject)
+    // UPDATED: Now requires the weapon's Override Controller (can be null)
+    public void EquipNewWeapon(GameObject newWeaponObject, AnimatorOverrideController overrideController)
     {
         currentWeaponScript = newWeaponObject.GetComponent<WeaponDamage>();
-    }
 
+        // 2. CHECK: Does this weapon have a special animation file?
+        if (overrideController != null)
+        {
+            // YES (Spear) -> Use the special animations
+            animator.runtimeAnimatorController = overrideController;
+        }
+        else
+        {
+            // NO (Axe) -> REVERT to the default animations we saved at Start()
+            animator.runtimeAnimatorController = baseController;
+        }
+    }
     void Update()
     {
-        // Check if enough time has passed based on attack speed cooldown
         if (Input.GetButtonDown("Fire1") && !isAttacking && Time.time >= nextAttackTime) 
         {
-            PerformAttack();
+            if (Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl))
+            {
+                PerformHeavyAttack();
+            }
+            else
+            {
+                PerformNormalAttack();
+            }
         }
     }
 
-    void PerformAttack()
+    void PerformHeavyAttack()
     {
-        if (movementScript == null)
-        {
-            Debug.LogError("CRITICAL: Movement Script is NOT assigned!");
-            return;
-        }
+        if (movementScript == null) return;
 
         isAttacking = true; 
         movementScript.isAttacking = true; 
 
-        // 1. Update Animation Speed
-        // Assumes you created a 'AttackSpeedMultiplier' float parameter in your Animator
         if (stats != null)
         {
-            animator.SetFloat("AttackSpeedMultiplier", stats.attackSpeed);
-            
-            // 2. Set Cooldown Timer
-            // Formula: Higher attack speed = lower delay between clicks
-            float attackDelay = 1f / stats.attackSpeed; 
+            animator.SetFloat("AttackSpeedMultiplier", (stats.attackSpeed / 2) + 0.5f);
+            float attackDelay = (1f / stats.attackSpeed) + 0.5f; 
             nextAttackTime = Time.time + attackDelay;
         }
 
-        // 3. Trigger Animation
-        if (currentWeaponScript != null)
-        {
-            // Use the specific triggers for different weapon types
-            string weaponTag = currentWeaponScript.gameObject.tag;
-            
-            if (weaponTag == "Spear") animator.SetTrigger("SpearAttack");
-            else if (weaponTag == "Sword") animator.SetTrigger("SpearAttack");
-            else if (weaponTag == "Axe") animator.SetTrigger("SpearAttack");
-            else animator.SetTrigger("SpearAttack");
-        }
+        if (currentWeaponScript != null) currentWeaponScript.isHeavyAttack = true;
+
+        animator.SetTrigger("HeavyAttack");
     }
 
+    void PerformNormalAttack()
+    {
+        if (movementScript == null) return;
+
+        isAttacking = true; 
+        movementScript.isAttacking = true; 
+
+        if (stats != null)
+        {
+            animator.SetFloat("AttackSpeedMultiplier", stats.attackSpeed);
+            float attackDelay = 1f / stats.attackSpeed; 
+            nextAttackTime = Time.time + attackDelay;
+        }
+        
+        if (currentWeaponScript != null) currentWeaponScript.isHeavyAttack = false;
+        
+        // --- SIMPLIFIED LOGIC ---
+        // We don't need if/else tags anymore. 
+        // If we hold a Spear, the animator is already swapped, so "Attack" plays the poke.
+        // If we hold an Axe, the animator is default, so "Attack" plays the swing.
+        animator.SetTrigger("Attack"); 
+    }
+
+    // --- Animation Events ---
     public void OpenDamageWindow()
     {
         if (currentWeaponScript != null) currentWeaponScript.EnableHitbox();

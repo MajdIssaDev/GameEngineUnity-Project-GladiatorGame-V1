@@ -1,6 +1,6 @@
 using UnityEngine;
 using UnityEngine.UI;
-
+using TMPro;
 public class EnemyHealthBar : MonoBehaviour
 {
     [Header("Debug")]
@@ -8,7 +8,9 @@ public class EnemyHealthBar : MonoBehaviour
 
     [Header("UI Elements")]
     public Image fillImage;
-    public CanvasGroup canvasGroup; 
+    public CanvasGroup canvasGroup;
+    public TMP_Text EnemyName;
+    public TMP_Text DamageInflicted;
 
     [Header("Behavior Settings")]
     public float visibleAfterHitTime = 5f;
@@ -19,7 +21,9 @@ public class EnemyHealthBar : MonoBehaviour
     private PlayerLockOn playerLockOn;
     private Transform mainCam;
     
-    private float lastHitTime = -100f; 
+    private float lastHitTime = -100f;
+    private float lastHitDamage = 0;
+    private float totalDamageInflictedInShortTime = 0;
 
     void Start()
     {
@@ -36,6 +40,8 @@ public class EnemyHealthBar : MonoBehaviour
 
         // 4. Default to hidden unless Debug is on
         if (canvasGroup != null) canvasGroup.alpha = debugAlwaysShow ? 1 : 0;
+        if (DamageInflicted != null) DamageInflicted.text = "";
+        if (EnemyName != null) EnemyName.text = enemyStats.GetTitle();
     }
 
     void LateUpdate()
@@ -80,12 +86,23 @@ public class EnemyHealthBar : MonoBehaviour
                 canvasGroup.alpha = 1;
             else
                 canvasGroup.alpha = 0;
+            
+            if (recentlyHit && healthScript.currentHealth > 0)
+            {
+                if (DamageInflicted != null) DamageInflicted.text = totalDamageInflictedInShortTime.ToString("0.#"); //set to damage inflicted
+            }
+            else
+            {
+                if (DamageInflicted != null) DamageInflicted.text = "";
+                totalDamageInflictedInShortTime = 0;
+            }
         }
     }
 
-    public void OnTakeDamage()
+    public void OnTakeDamage(float damage)
     {
         lastHitTime = Time.time;
+        totalDamageInflictedInShortTime += damage;
     }
     
 }

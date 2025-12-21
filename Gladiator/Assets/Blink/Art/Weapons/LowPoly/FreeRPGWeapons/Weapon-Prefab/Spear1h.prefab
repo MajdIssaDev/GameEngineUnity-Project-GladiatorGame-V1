@@ -57,6 +57,10 @@ PrefabInstance:
       value: Spear1h
       objectReference: {fileID: 0}
     - target: {fileID: 919132149155446097, guid: df3f07283842c864abb844da441c0bf8, type: 3}
+      propertyPath: m_Layer
+      value: 8
+      objectReference: {fileID: 0}
+    - target: {fileID: 919132149155446097, guid: df3f07283842c864abb844da441c0bf8, type: 3}
       propertyPath: m_TagString
       value: Spear
       objectReference: {fileID: 0}
@@ -93,6 +97,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   damageAmount: 20
   knockbackStrength: 10
+  ownerStats: {fileID: 0}
 --- !u!65 &7607170708505305554
 BoxCollider:
   m_ObjectHideFlags: 0

@@ -1,69 +1,74 @@
 using UnityEngine;
+using System.Collections.Generic;
 
 public class WeaponDamage : MonoBehaviour
 {
     [Header("Combat Stats")]
-    public int damageAmount = 20;
-    public float knockbackStrength = 5f; // How hard this weapon hits
+    public float damageAmount = 20;
+    public float knockbackStrength = 5f;
+    
+    // --- NEW VARIABLE ---
+    [HideInInspector] 
+    public bool isHeavyAttack = false; // PlayerCombat will toggle this
     
     [SerializeField] Stats ownerStats;
     private Collider myCollider;
+    private List<GameObject> hitEnemies = new List<GameObject>();
 
     private void Start()
     {
         myCollider = GetComponent<BoxCollider>();
         myCollider.enabled = false;
-        // 1. Look up the hierarchy to find the Stats script on the Player or Enemy
-        if (ownerStats == null)
-        {
-            ownerStats = GetComponentInParent<Stats>();
-        }
-
-        // 2. Debug check to ensure it was found
-        if (ownerStats == null)
-        {
-            Debug.LogWarning($"Weapon {gameObject.name} could not find a Stats script in its parents!");
-        }
+        
+        if (ownerStats == null) ownerStats = GetComponentInParent<Stats>();
     }
 
     private void OnTriggerEnter(Collider other)
     {
-        Debug.Log("I touched: " + other.gameObject.name);
-        // 1. Check if it's an enemy
-        if (other.gameObject != this.gameObject)
+        if (other.gameObject == this.gameObject) return;
+
+        if (other.CompareTag("Enemy"))
         {
-            if (other.CompareTag("Enemy"))
+            if (hitEnemies.Contains(other.gameObject)) return;
+            hitEnemies.Add(other.gameObject);
+
+            // --- Knockback Logic ---
+            ImpactReceiver enemyImpact = other.GetComponent<ImpactReceiver>();
+            if (enemyImpact != null)
             {
-                // Deal Damage (Custom logic later)
-                Debug.Log("Hit Enemy!");
+                Vector3 pushDirection = other.transform.position - transform.position;
+                pushDirection.y = 0;
+                pushDirection.Normalize();
+                enemyImpact.AddImpact(pushDirection, knockbackStrength);
+            }
 
-                ImpactReceiver enemyImpact = other.GetComponent<ImpactReceiver>();
+            // --- Damage Logic ---
+            HealthScript healthScript = other.gameObject.GetComponent<HealthScript>();
+            if (healthScript != null)
+            {
+                // 1. Calculate Standard Damage
+                float finalDamage = damageAmount * (1 + (ownerStats.strength / 10));
 
-                if (enemyImpact != null)
+                // 2. CHECK: If Heavy, multiply by 1.5 (50% more)
+                if (isHeavyAttack)
                 {
-                    // 1. Calculate the raw direction
-                    Vector3 pushDirection = other.transform.position - transform.position;
-
-                    // 2. THE FIX: Kill the Y (Vertical) component
-                    pushDirection.y = 0;
-
-                    // 3. Normalize it (Make the length 1.0)
-                    pushDirection.Normalize();
-
-                    // 4. Send the force
-                    enemyImpact.AddImpact(pushDirection, knockbackStrength);
+                    finalDamage *= 1.5f;
+                    Debug.Log("BOOM! Heavy Hit!"); // Optional: Check console to confirm
                 }
 
-                HealthScript healthScript = other.gameObject.GetComponent<HealthScript>();
-
-                if (healthScript != null)
-                {
-                    healthScript.takeDamage(damageAmount * (1+(ownerStats.strength/10)));  //Example 10 strength =  double damage
-                }
+                healthScript.takeDamage(finalDamage);
             }
         }
     }
     
-    public void EnableHitbox() => myCollider.enabled = true;
-    public void DisableHitbox() => myCollider.enabled = false;
+    public void EnableHitbox() 
+    {
+        hitEnemies.Clear(); 
+        myCollider.enabled = true;
+    }
+
+    public void DisableHitbox() 
+    {
+        myCollider.enabled = false;
+    }
 }

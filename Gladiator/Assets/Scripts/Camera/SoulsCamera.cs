@@ -140,4 +140,19 @@ public class SoulsCamera : MonoBehaviour
         if (angle > 180) return angle - 360;
         return angle;
     }
+    
+    public void SetPlayerTarget(GameObject newPlayer)
+    {
+        playerTransform = newPlayer.transform;
+        
+        // Auto-find the lock-on script on the new player
+        lockOnScript = newPlayer.GetComponent<PlayerLockOn>();
+
+        // Optional: Snap camera to look at player's back immediately
+        if (playerTransform != null)
+        {
+            currentX = playerTransform.eulerAngles.y;
+            currentY = 20f; // Default slightly down angle
+        }
+    }
 }

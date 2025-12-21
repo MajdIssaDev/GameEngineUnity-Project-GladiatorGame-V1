@@ -8,9 +8,9 @@ public class PlayerWeaponHandler : MonoBehaviour
     public PlayerCombat playerCombat;
 
     [Header("Testing")]
-    public GameObject weaponToEquip; 
+    // CHANGE 1: We now use the Data file instead of the raw Prefab
+    public WeaponData weaponToEquip; 
 
-    // 1. DEFINE A STRUCT TO HOLD DATA
     [System.Serializable]
     public struct WeaponOffsetConfig
     {
@@ -19,7 +19,6 @@ public class PlayerWeaponHandler : MonoBehaviour
         public Vector3 rotationOffset;
     }
 
-    // 2. CREATE A LIST TO EDIT IN INSPECTOR
     [Header("Weapon Alignment Settings")]
     public List<WeaponOffsetConfig> weaponOffsets;
 
@@ -27,43 +26,49 @@ public class PlayerWeaponHandler : MonoBehaviour
 
     void Start()
     {
+        // Testing logic
         if (weaponToEquip != null) EquipWeapon(weaponToEquip);
     }
 
-    public void EquipWeapon(GameObject weaponPrefab)
+    // CHANGE 2: Function now accepts WeaponData
+    public void EquipWeapon(WeaponData newWeaponData)
     {
+        if (newWeaponData == null) return;
+
         // Cleanup old weapon
         if (currentWeaponInstance != null) Destroy(currentWeaponInstance);
 
-        // Spawn weapon
-        currentWeaponInstance = Instantiate(weaponPrefab, weaponSocket.position, weaponSocket.rotation);
+        // Spawn weapon using the PREFAB from the data
+        currentWeaponInstance = Instantiate(newWeaponData.weaponPrefab, weaponSocket.position, weaponSocket.rotation);
         currentWeaponInstance.transform.SetParent(weaponSocket);
 
         // ---------------------------------------------------------
-        // 3. APPLY CUSTOM OFFSETS BASED ON TAG
+        // OFFSET LOGIC (Still works the same)
         // ---------------------------------------------------------
         
-        // Default values
         Vector3 finalPos = Vector3.zero;
         Quaternion finalRot = Quaternion.identity;
 
-        // Search the list for a matching tag
-        WeaponOffsetConfig config = weaponOffsets.Find(x => x.weaponTag == weaponPrefab.tag);
+        // We check the tag of the instantiated object
+        WeaponOffsetConfig config = weaponOffsets.Find(x => x.weaponTag == currentWeaponInstance.tag);
 
-        // If we found a match (checking if the tag is not null/empty to verify)
         if (!string.IsNullOrEmpty(config.weaponTag))
         {
             finalPos = config.positionOffset;
             finalRot = Quaternion.Euler(config.rotationOffset);
         }
 
-        // Apply the settings
         currentWeaponInstance.transform.localPosition = finalPos;
         currentWeaponInstance.transform.localRotation = finalRot;
 
         // ---------------------------------------------------------
-
-        // Notify combat script
-        playerCombat.EquipNewWeapon(currentWeaponInstance);
+        // CHANGE 3: THE FIX
+        // Now we can pass BOTH the physical object AND the animator override
+        // ---------------------------------------------------------
+        if (playerCombat != null)
+        {
+            // This fixes your "takes 2 parameters but sending 1" error
+            playerCombat.EquipNewWeapon(currentWeaponInstance, newWeaponData.animatorOverride);
+        }
     }
 }
