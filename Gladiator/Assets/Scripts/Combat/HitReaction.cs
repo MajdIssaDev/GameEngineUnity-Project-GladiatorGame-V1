@@ -8,101 +8,151 @@ public class HitReaction : MonoBehaviour
 
     [Header("Settings")]
     public bool isBlocking = false; 
-    
-    // Split forces so you can tune them (Side hits usually need less movement to look good)
     public float flinchForceForwardBack = 30f; 
     public float flinchForceLeftRight = 20f;   
     
-    public float recoverySpeed = 10f;
+    [Header("Timing")]
+    public float impactDuration = 0.15f; 
+    public float recoverySpeed = 5f; 
 
     [Header("VFX")]
     public GameObject bloodVfxPrefab;
     public GameObject sparkVfxPrefab;
+    public bool snapVfxToBone = true;
 
-    // Internal tracking
-    private Transform lastHitBone;
-    private Quaternion currentFlinchRotation = Quaternion.identity;
+    [Header("Physics Settings")]
+    [Tooltip("How many degrees to bend.")]
+    public float flinchAngle = 45f;
+    // Internal Data
+    private class BoneFlinchState
+    {
+        public Quaternion currentOffset = Quaternion.identity; 
+        public Quaternion targetOffset = Quaternion.identity;  
+        public Quaternion startOffset = Quaternion.identity;   
+        public float timer = 0f;
+        public bool isImpactPhase = false;
+    }
+
+    private Dictionary<Transform, BoneFlinchState> activeFlinches = new Dictionary<Transform, BoneFlinchState>();
 
     void LateUpdate()
     {
-        // 1. Smoothly return rotation to zero
-        currentFlinchRotation = Quaternion.Lerp(currentFlinchRotation, Quaternion.identity, Time.deltaTime * recoverySpeed);
+        List<Transform> bonesToRemove = new List<Transform>();
 
-        // 2. Apply the rotation to the bone
-        if (lastHitBone != null && Quaternion.Angle(currentFlinchRotation, Quaternion.identity) > 0.1f)
+        foreach (var kvp in activeFlinches)
         {
-            lastHitBone.localRotation = lastHitBone.localRotation * currentFlinchRotation;
+            Transform bone = kvp.Key;
+            BoneFlinchState state = kvp.Value;
+
+            if (bone == null) { bonesToRemove.Add(bone); continue; }
+
+            // 1. Calculate Rotation
+            if (state.isImpactPhase)
+            {
+                state.timer += Time.deltaTime;
+                float t = state.timer / impactDuration;
+                t = t * t * (3f - 2f * t); // Smooth step
+                state.currentOffset = Quaternion.Lerp(state.startOffset, state.targetOffset, t);
+
+                if (state.timer >= impactDuration) state.isImpactPhase = false;
+            }
+            else
+            {
+                state.currentOffset = Quaternion.Lerp(state.currentOffset, Quaternion.identity, Time.deltaTime * recoverySpeed);
+                if (Quaternion.Angle(state.currentOffset, Quaternion.identity) < 0.1f)
+                    bonesToRemove.Add(bone);
+            }
+
+            // 2. Apply Rotation
+            bone.localRotation = bone.localRotation * state.currentOffset;
         }
+
+        foreach (var b in bonesToRemove) activeFlinches.Remove(b);
     }
 
-    public bool HandleHit(Vector3 hitPoint, Vector3 attackDirection)
+    // --- THIS IS THE FIX ---
+    // We added 'Collider hitCollider' as the first argument
+    public bool HandleHit(Collider hitCollider, Vector3 hitPoint, Vector3 attackDirection)
     {
         if (isBlocking)
         {
-            // Blocked
-            if (sparkVfxPrefab) 
-                Instantiate(sparkVfxPrefab, hitPoint, Quaternion.LookRotation(-attackDirection));
+            if (sparkVfxPrefab) Instantiate(sparkVfxPrefab, hitPoint, Quaternion.LookRotation(-attackDirection));
             return true;
         }
+
+        // 1. Identify the Bone
+        Transform hitBone = null;
+
+        // A. Direct Match (Best for Hurtboxes)
+        // If the collider we hit IS in our list of body parts, use it directly.
+        if (bodyParts.Contains(hitCollider.transform))
+        {
+            hitBone = hitCollider.transform;
+        }
         else
         {
-            // Hit
-            if (bloodVfxPrefab) 
-                Instantiate(bloodVfxPrefab, hitPoint, Quaternion.LookRotation(-attackDirection));
+            // B. Fallback (If we somehow hit a generic box, find closest bone)
+            hitBone = GetClosestBone(hitPoint);
+        }
 
-            Transform closestBone = GetClosestBone(hitPoint);
-            
-            if (closestBone != null)
+        if (hitBone != null)
+        {
+            // 2. SPAWN VFX
+            if (bloodVfxPrefab)
             {
-                lastHitBone = closestBone;
-                CalculateDirectionalFlinch(attackDirection);
+                Vector3 spawnPos = hitPoint;
+                Transform spawnParent = null;
+
+                if (snapVfxToBone)
+                {
+                    spawnPos = hitBone.position;
+                    spawnParent = hitBone;
+                }
+
+                GameObject vfx = Instantiate(bloodVfxPrefab, spawnPos, Quaternion.LookRotation(-attackDirection));
+                if (spawnParent != null) vfx.transform.SetParent(spawnParent);
+                Destroy(vfx, 1.0f);
             }
 
-            return false;
-        }
-    }
+            // 3. FLINCH LOGIC
+            if (!activeFlinches.ContainsKey(hitBone))
+            {
+                activeFlinches.Add(hitBone, new BoneFlinchState());
+            }
 
-    void CalculateDirectionalFlinch(Vector3 attackDirection)
+            BoneFlinchState state = activeFlinches[hitBone];
+            
+            state.startOffset = state.currentOffset; 
+            state.targetOffset = CalculateTargetRotation(hitBone, attackDirection);
+            state.timer = 0f;
+            state.isImpactPhase = true;
+        }
+
+        return false;
+    }
+    
+    Quaternion CalculateTargetRotation(Transform bone, Vector3 attackDirection)
     {
-        // 1. Convert Global Attack Direction to Local Direction relative to the victim
-        // This tells us if the hit is coming from their Left, Right, Front, or Back
-        Vector3 localAttackDir = transform.InverseTransformDirection(attackDirection);
-        
-        float xRot = 0; // Pitch (Forward/Back)
-        float zRot = 0; // Roll (Left/Right)
+        // 1. Force Direction: The direction the blow is travelling (World Space)
+        Vector3 impactDir = attackDirection.normalized;
 
-        // --- FRONT / BACK LOGIC (X Axis) ---
-        if (localAttackDir.z > 0) 
-        {
-            // Attack traveling same direction as player = Hit from BEHIND
-            // Bend Forward (+X)
-            xRot = flinchForceForwardBack; 
-        }
-        else 
-        {
-            // Attack traveling opposite to player = Hit from FRONT
-            // Bend Backward (-X)
-            xRot = -flinchForceForwardBack; 
-        }
+        // 2. Rotation Axis: Calculate the "Hinge" to rotate around (World Space)
+        // We use the Cross Product of World-Up and the Impact Direction.
+        // Example: If Impact is Forward (Z), Axis becomes Right (X).
+        Vector3 worldRotationAxis = Vector3.Cross(Vector3.up, impactDir);
 
-        // --- LEFT / RIGHT LOGIC (Z Axis) ---
-        if (localAttackDir.x > 0)
-        {
-            // Attack coming from Right (+X) -> Push to Left
-            // Bend Left (+Z)
-            zRot = flinchForceLeftRight;
-        }
-        else
-        {
-            // Attack coming from Left (-X) -> Push to Right
-            // Bend Right (-Z)
-            zRot = -flinchForceLeftRight;
-        }
+        // Safety: If hit strictly from above/below, use Right axis to prevent errors
+        if (worldRotationAxis.sqrMagnitude < 0.01f) worldRotationAxis = Vector3.right;
 
-        // Apply both rotations
-        currentFlinchRotation = Quaternion.Euler(xRot, 0, zRot);
-    }
+        // 3. Convert that World Axis into the Bone's Local Space
+        // This makes it work regardless of how the bone is currently twisted by animation
+        Vector3 localRotationAxis = bone.InverseTransformDirection(worldRotationAxis);
 
+        // 4. Create the rotation
+        // We apply the angle around that specific calculated hinge
+        return Quaternion.AngleAxis(flinchAngle, localRotationAxis);
+    }    
+    
     Transform GetClosestBone(Vector3 hitPoint)
     {
         Transform bestBone = null;
