@@ -4,16 +4,19 @@ using System.Collections.Generic;
 public class WeaponDamage : MonoBehaviour
 {
     [Header("References")]
-    public PlayerCombat playerCombat; // Assign the ATTACKER'S combat script
+    public PlayerCombat playerCombat;
     [SerializeField] Stats ownerStats;
     
-    [Header("Combat Stats")]
+    [Header("Settings")]
     public float damageAmount = 20;
     public float knockbackStrength = 5f;
-    [HideInInspector] public bool isHeavyAttack = false; 
-    
+    [HideInInspector] public bool isHeavyAttack = false;
+
     private Collider myCollider;
-    private List<GameObject> hitEnemies = new List<GameObject>();
+    
+    // Track Hitboxes (Bones) separately from Enemies (Health)
+    private List<Collider> hitParts = new List<Collider>(); 
+    private List<GameObject> damagedEnemies = new List<GameObject>(); 
 
     private void Start()
     {
@@ -25,66 +28,55 @@ public class WeaponDamage : MonoBehaviour
 
     private void OnTriggerEnter(Collider other)
     {
-        // Don't hit yourself
+        // Ignore self
         if (other.transform.root == transform.root) return;
 
-        // Check if we hit something new
-        if (hitEnemies.Contains(other.gameObject)) return;
-        hitEnemies.Add(other.gameObject);
+        // --- 1. TRACK PARTS (Visuals) ---
+        // If we already hit THIS specific arm collider, skip it.
+        if (hitParts.Contains(other)) return;
+        hitParts.Add(other);
 
-        // --- 1. HANDLE HIT REACTION & BLOCKING ---
-        bool attackWasBlocked = false;
-
-        // Try to find the HitReaction script on the victim (Player OR Enemy)
-        HitReaction victimReaction = other.GetComponent<HitReaction>();
+        HitReaction reaction = other.GetComponentInParent<HitReaction>();
         
-        if (victimReaction != null)
+        if (reaction != null)
         {
-            // Calculate EXACT hit point on the collider surface
-            Vector3 hitPoint = other.ClosestPoint(transform.position);
-            Vector3 attackDir = (other.transform.position - transform.position).normalized;
+            // Pass the collider 'other' so the script knows EXACTLY which bone we hit
+            // (We wrote this support in the previous step)
+            reaction.HandleHit(other, other.ClosestPoint(transform.position), transform.forward);
+        }
 
-            // Trigger the reaction and check if they blocked
-            attackWasBlocked = victimReaction.HandleHit(hitPoint, attackDir);
-
-            if (attackWasBlocked)
+        // --- 2. TRACK DAMAGE (Health) ---
+        GameObject enemyRoot = other.transform.root.gameObject;
+        
+        // Only damage the enemy if we haven't damaged this specific enemy instance yet
+        if (!damagedEnemies.Contains(enemyRoot))
+        {
+            damagedEnemies.Add(enemyRoot);
+            
+            // Apply Damage
+            HealthScript health = other.GetComponentInParent<HealthScript>();
+            if (health != null)
             {
-                Debug.Log("Attack Blocked by " + other.name);
-                // If THIS weapon belongs to the Player, trigger the Player's recoil
-                if (playerCombat != null) playerCombat.TriggerRecoil();
-                
-                // Stop damage logic here
-                return; 
+                float finalDamage = isHeavyAttack ? damageAmount * 1.5f : damageAmount;
+                if (ownerStats != null) finalDamage += ownerStats.strength;
+                health.takeDamage(finalDamage);
+            }
+
+            // Apply Knockback
+            ImpactReceiver enemyImpact = other.GetComponentInParent<ImpactReceiver>();
+            if (enemyImpact != null)
+            {
+                Vector3 pushDir = (other.transform.position - transform.position).normalized;
+                pushDir.y = 0;
+                enemyImpact.AddImpact(pushDir, knockbackStrength);
             }
         }
-
-        // --- 2. APPLY DAMAGE & KNOCKBACK (If not blocked) ---
-        
-        // Knockback
-        ImpactReceiver enemyImpact = other.GetComponent<ImpactReceiver>();
-        if (enemyImpact != null)
-        {
-            Vector3 pushDir = (other.transform.position - transform.position).normalized;
-            pushDir.y = 0; // Keep horizontal
-            enemyImpact.AddImpact(pushDir, knockbackStrength);
-        }
-
-        // Damage
-        HealthScript health = other.GetComponent<HealthScript>();
-        if (health != null)
-        {
-            float finalDamage = damageAmount;
-            if (ownerStats != null) finalDamage += ownerStats.strength; // Simplified math for example
-            
-            if (isHeavyAttack) finalDamage *= 1.5f;
-
-            health.takeDamage(finalDamage);
-        }
     }
-    
+
     public void EnableHitbox() 
     {
-        hitEnemies.Clear(); 
+        hitParts.Clear();
+        damagedEnemies.Clear();
         myCollider.enabled = true;
     }
 
