@@ -3,15 +3,15 @@ using System.Collections.Generic;
 
 public class WeaponDamage : MonoBehaviour
 {
+    [Header("References")]
+    public PlayerCombat playerCombat; // Assign the ATTACKER'S combat script
+    [SerializeField] Stats ownerStats;
+    
     [Header("Combat Stats")]
     public float damageAmount = 20;
     public float knockbackStrength = 5f;
+    [HideInInspector] public bool isHeavyAttack = false; 
     
-    // --- NEW VARIABLE ---
-    [HideInInspector] 
-    public bool isHeavyAttack = false; // PlayerCombat will toggle this
-    
-    [SerializeField] Stats ownerStats;
     private Collider myCollider;
     private List<GameObject> hitEnemies = new List<GameObject>();
 
@@ -19,45 +19,66 @@ public class WeaponDamage : MonoBehaviour
     {
         myCollider = GetComponent<BoxCollider>();
         myCollider.enabled = false;
-        
         if (ownerStats == null) ownerStats = GetComponentInParent<Stats>();
+        if (playerCombat == null) playerCombat = GetComponentInParent<PlayerCombat>();
     }
 
     private void OnTriggerEnter(Collider other)
     {
-        if (other.gameObject == this.gameObject) return;
+        // Don't hit yourself
+        if (other.transform.root == transform.root) return;
 
-        if (other.CompareTag("Enemy"))
+        // Check if we hit something new
+        if (hitEnemies.Contains(other.gameObject)) return;
+        hitEnemies.Add(other.gameObject);
+
+        // --- 1. HANDLE HIT REACTION & BLOCKING ---
+        bool attackWasBlocked = false;
+
+        // Try to find the HitReaction script on the victim (Player OR Enemy)
+        HitReaction victimReaction = other.GetComponent<HitReaction>();
+        
+        if (victimReaction != null)
         {
-            if (hitEnemies.Contains(other.gameObject)) return;
-            hitEnemies.Add(other.gameObject);
+            // Calculate EXACT hit point on the collider surface
+            Vector3 hitPoint = other.ClosestPoint(transform.position);
+            Vector3 attackDir = (other.transform.position - transform.position).normalized;
 
-            // --- Knockback Logic ---
-            ImpactReceiver enemyImpact = other.GetComponent<ImpactReceiver>();
-            if (enemyImpact != null)
+            // Trigger the reaction and check if they blocked
+            attackWasBlocked = victimReaction.HandleHit(hitPoint, attackDir);
+
+            if (attackWasBlocked)
             {
-                Vector3 pushDirection = other.transform.position - transform.position;
-                pushDirection.y = 0;
-                pushDirection.Normalize();
-                enemyImpact.AddImpact(pushDirection, knockbackStrength);
+                Debug.Log("Attack Blocked by " + other.name);
+                // If THIS weapon belongs to the Player, trigger the Player's recoil
+                if (playerCombat != null) playerCombat.TriggerRecoil();
+                
+                // Stop damage logic here
+                return; 
             }
+        }
 
-            // --- Damage Logic ---
-            HealthScript healthScript = other.gameObject.GetComponent<HealthScript>();
-            if (healthScript != null)
-            {
-                // 1. Calculate Standard Damage
-                float finalDamage = damageAmount * (1 + (ownerStats.strength / 10));
+        // --- 2. APPLY DAMAGE & KNOCKBACK (If not blocked) ---
+        
+        // Knockback
+        ImpactReceiver enemyImpact = other.GetComponent<ImpactReceiver>();
+        if (enemyImpact != null)
+        {
+            Vector3 pushDir = (other.transform.position - transform.position).normalized;
+            pushDir.y = 0; // Keep horizontal
+            enemyImpact.AddImpact(pushDir, knockbackStrength);
+        }
 
-                // 2. CHECK: If Heavy, multiply by 1.5 (50% more)
-                if (isHeavyAttack)
-                {
-                    finalDamage *= 1.5f;
-                    Debug.Log("BOOM! Heavy Hit!"); // Optional: Check console to confirm
-                }
+        // Damage
+        HealthScript health = other.GetComponent<HealthScript>();
+        if (health != null)
+        {
+            float finalDamage = damageAmount;
+            if (ownerStats != null) finalDamage += ownerStats.strength; // Simplified math for example
+            
+            if (isHeavyAttack) finalDamage *= 1.5f;
 
-                healthScript.takeDamage(finalDamage);
-            }
+            health.takeDamage(finalDamage);
         }
     }
     

@@ -113,4 +113,19 @@ public class PlayerCombat : MonoBehaviour
         isAttacking = false; 
         if (movementScript != null) movementScript.isAttacking = false;
     }
+    
+    // Add this to PlayerCombat.cs
+    public void TriggerRecoil()
+    {
+        // 1. Cancel attack state
+        isAttacking = false; 
+        if (movementScript != null) movementScript.isAttacking = false;
+
+        // 2. Stop the damage window immediately
+        CloseDamageWindow();
+
+        // 3. Play recoil animation
+        // Make sure you have a Trigger parameter named "Recoil" in your Animator
+        animator.SetTrigger("Recoil"); 
+    }
 }
