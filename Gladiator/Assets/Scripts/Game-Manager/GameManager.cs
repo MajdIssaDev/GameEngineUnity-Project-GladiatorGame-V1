@@ -1,6 +1,7 @@
 using UnityEngine;
 using System.Collections.Generic;
 using TMPro;
+using System.Linq; // Needed for list filtering
 
 public class GameManager : MonoBehaviour
 {
@@ -19,11 +20,15 @@ public class GameManager : MonoBehaviour
     public GameObject playerPrefab;
     public Transform playerSpawnPoint; 
     
-    [Header("Enemy Tables")]
+    [Header("Enemy Configuration")]
     public List<GameObject> normalEnemyTable; 
     public List<GameObject> bossEnemyTable;   
     public Transform[] enemySpawnPoints; 
     
+    // --- NEW: LIST OF ALL WEAPONS ENEMIES CAN USE ---
+    public List<WeaponData> globalEnemyWeaponList; 
+    // -----------------------------------------------
+
     [Header("UI Panels")]
     public GameObject mainMenuPanel;
     public GameObject shopPanel;
@@ -72,7 +77,6 @@ public class GameManager : MonoBehaviour
 
     public void OnNextRoundButtonPressed()
     {
-        // 1. Teleport Player back to spawn
         if (currentPlayerObject != null && playerSpawnPoint != null)
         {
             CharacterController cc = currentPlayerObject.GetComponent<CharacterController>();
@@ -83,7 +87,6 @@ public class GameManager : MonoBehaviour
 
             if (cc != null) cc.enabled = true;
 
-            // Update Weapon
             PlayerWeaponHandler handler = currentPlayerObject.GetComponent<PlayerWeaponHandler>();
             if (handler != null && equippedWeapon != null)
             {
@@ -91,11 +94,7 @@ public class GameManager : MonoBehaviour
             }
         }
 
-        // --- NEW: RE-ENABLE PLAYER CONTROLS ---
         SetPlayerControls(true); 
-        // --------------------------------------
-
-        // 2. Close shop, start fighting
         shopPanel.SetActive(false);
         hudPanel.SetActive(true);
         StartNextRound();
@@ -104,7 +103,6 @@ public class GameManager : MonoBehaviour
     public void OnExitButtonPressed()
     {
         Application.Quit();
-        Debug.Log("Game Exited");
     }
 
     // --- GAME LOGIC ---
@@ -143,32 +141,33 @@ public class GameManager : MonoBehaviour
         }
         
         HealthScript pHealth = currentPlayerObject.GetComponent<HealthScript>();
+        
         if (pHealth != null)
         {
+            // 1. Assign the Slider FIRST so the script knows what UI to update
             pHealth.playerHudSlider = playerHealthBar; 
+
+            // 2. THEN heal the player (which triggers the slider update)
+            pHealth.setCurrentHealth(pHealth.getMaxHealth());
         }
     }
 
-    // --- HELPER FUNCTION TO FREEZE/UNFREEZE PLAYER ---
     void SetPlayerControls(bool isActive)
     {
         if (currentPlayerObject == null) return;
 
-        // Toggle Movement Script
         PlayerLocomotion movement = currentPlayerObject.GetComponent<PlayerLocomotion>();
         if (movement != null) movement.enabled = isActive;
 
-        // Toggle Combat Script
         PlayerCombat combat = currentPlayerObject.GetComponent<PlayerCombat>();
         if (combat != null) combat.enabled = isActive;
 
-        // Optional: Force Idle animation if disabling
         if (!isActive)
         {
             Animator anim = currentPlayerObject.GetComponent<Animator>();
             if (anim != null) 
             {
-                anim.SetFloat("InputMagnitude", 0f); // Or whatever drives your run animation
+                anim.SetFloat("InputMagnitude", 0f); 
                 anim.SetFloat("Vertical", 0f);
                 anim.SetFloat("Horizontal", 0f);
             }
@@ -192,6 +191,9 @@ public class GameManager : MonoBehaviour
 
         Stats bossStats = newBoss.GetComponent<Stats>();
         if (bossStats != null) bossStats.SetLevel(currentRound);
+
+        // --- NEW: EQUIP BOSS WEAPON ---
+        EquipEnemyBasedOnRound(newBoss, currentRound + 2); // Boss gets slightly better gear
     }
 
     void SpawnNormalWave()
@@ -216,8 +218,53 @@ public class GameManager : MonoBehaviour
 
             Stats enemyStats = newEnemy.GetComponent<Stats>();
             if (enemyStats != null) enemyStats.SetLevel(currentRound);
+
+            // --- NEW: EQUIP ENEMY WEAPON ---
+            EquipEnemyBasedOnRound(newEnemy, currentRound);
         }
     }
+
+    // --- NEW HELPER FUNCTIONS FOR WEAPON TIERING ---
+
+    void EquipEnemyBasedOnRound(GameObject enemy, int roundOrLevel)
+    {
+        EnemyWeaponHandler weaponHandler = enemy.GetComponent<EnemyWeaponHandler>();
+        if (weaponHandler == null) return;
+
+        // 1. Determine Tier logic
+        // Example: Round 1-3 = Tier 1. Round 4-6 = Tier 2.
+        int targetTier = Mathf.CeilToInt(roundOrLevel / 3.0f);
+        if (targetTier < 1) targetTier = 1;
+
+        // 2. Find a weapon matching that tier
+        WeaponData weaponToGive = GetRandomWeaponByTier(targetTier);
+
+        // 3. Equip it
+        if (weaponToGive != null)
+        {
+            weaponHandler.EquipWeapon(weaponToGive);
+        }
+    }
+
+    WeaponData GetRandomWeaponByTier(int tier)
+    {
+        // Find all weapons matching the tier
+        List<WeaponData> potentialWeapons = globalEnemyWeaponList.Where(w => w.tier == tier).ToList();
+
+        // If no weapons found for this tier (e.g., Tier 10 requested but we only made up to Tier 3)
+        // Then get the highest available tier weapons instead.
+        if (potentialWeapons.Count == 0 && globalEnemyWeaponList.Count > 0)
+        {
+            int maxTier = globalEnemyWeaponList.Max(w => w.tier);
+            potentialWeapons = globalEnemyWeaponList.Where(w => w.tier == maxTier).ToList();
+        }
+
+        if (potentialWeapons.Count == 0) return null;
+
+        return potentialWeapons[Random.Range(0, potentialWeapons.Count)];
+    }
+
+    // ----------------------------------------------
 
     public void EnemyDefeated()
     {
@@ -234,11 +281,7 @@ public class GameManager : MonoBehaviour
     void RoundOver()
     {
         Debug.Log("Round Complete!");
-        
-        // --- NEW: DISABLE CONTROLS ---
         SetPlayerControls(false); 
-        // -----------------------------
-
         hudPanel.SetActive(false);
         shopPanel.SetActive(true);
     }

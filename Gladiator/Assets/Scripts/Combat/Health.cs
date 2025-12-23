@@ -99,6 +99,9 @@ public class HealthScript : MonoBehaviour
 
     // Setters/Getters
     public void setMaxHealth(float maxHealth) => this.maxHealth = maxHealth;
-    public float getMaxHealth() => maxHealth;
+    public float getMaxHealth()
+    {
+        return maxHealth;
+    } 
     public void setCurrentHealth(float currentHealth) => this.currentHealth = currentHealth;
 }

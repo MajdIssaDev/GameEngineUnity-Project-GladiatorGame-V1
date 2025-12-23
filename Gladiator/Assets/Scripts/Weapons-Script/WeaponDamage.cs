@@ -30,6 +30,7 @@ public class WeaponDamage : MonoBehaviour
     {
         // Ignore self
         if (other.transform.root == transform.root) return;
+        if (transform.root.CompareTag(other.transform.root.tag)) return; //so enemies dont damage enemies
 
         // --- 1. TRACK PARTS (Visuals) ---
         // If we already hit THIS specific arm collider, skip it.
