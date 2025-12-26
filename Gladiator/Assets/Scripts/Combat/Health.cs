@@ -16,6 +16,8 @@ public class HealthScript : MonoBehaviour
     // Only Enemies will have this component.
     [SerializeField] private EnemyHealthBar enemyFloatingBar; 
     
+    public bool isInvincible = false;
+    
     void Start()
     {
         currentHealth = maxHealth;
@@ -104,4 +106,14 @@ public class HealthScript : MonoBehaviour
         return maxHealth;
     } 
     public void setCurrentHealth(float currentHealth) => this.currentHealth = currentHealth;
+    
+    public void EnableIFrames()
+    {
+        isInvincible = true;
+    }
+
+    public void DisableIFrames()
+    {
+        isInvincible = false;
+    }
 }

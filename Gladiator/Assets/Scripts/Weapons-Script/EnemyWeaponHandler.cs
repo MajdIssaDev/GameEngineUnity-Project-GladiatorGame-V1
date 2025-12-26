@@ -4,12 +4,10 @@ using System.Collections.Generic;
 public class EnemyWeaponHandler : MonoBehaviour
 {
     [Header("Dependencies")]
-    public Transform rightHandSocket; 
-    public Animator enemyAnimator;    
-    
-    // --- NEW: Reference to the Combat Script ---
-    public EnemyCombat enemyCombat; 
-    // ------------------------------------------
+    public Transform rightHandSocket;
+    public Animator enemyAnimator;
+    // 1. New Reference to the Combat Script
+    public EnemyCombat combatScript;
 
     [System.Serializable]
     public struct WeaponOffsetConfig
@@ -24,6 +22,17 @@ public class EnemyWeaponHandler : MonoBehaviour
 
     private GameObject currentWeaponInstance;
 
+    void Awake()
+    {
+        // Automatically find the combat script if not assigned
+        if (combatScript == null) 
+            combatScript = GetComponent<EnemyCombat>();
+            
+        if (enemyAnimator == null)
+            enemyAnimator = GetComponent<Animator>();
+    }
+
+    // Called ONLY by GameManager now
     public void EquipWeapon(WeaponData weaponData)
     {
         if (weaponData == null) return;
@@ -33,12 +42,19 @@ public class EnemyWeaponHandler : MonoBehaviour
             return;
         }
 
-        // 1. Cleanup old weapon if existing
+        // 1. Cleanup old weapon
         if (currentWeaponInstance != null) Destroy(currentWeaponInstance);
 
         // 2. Instantiate and Parent
-        currentWeaponInstance = Instantiate(weaponData.weaponPrefab, rightHandSocket.position, rightHandSocket.rotation);
-        currentWeaponInstance.transform.SetParent(rightHandSocket);
+        if (weaponData.weaponPrefab != null)
+        {
+            currentWeaponInstance = Instantiate(weaponData.weaponPrefab, rightHandSocket.position, rightHandSocket.rotation);
+            currentWeaponInstance.transform.SetParent(rightHandSocket);
+        }
+        else
+        {
+            return;
+        }
 
         // 3. Apply Offsets
         Vector3 finalPos = Vector3.zero;
@@ -60,14 +76,14 @@ public class EnemyWeaponHandler : MonoBehaviour
         {
             enemyAnimator.runtimeAnimatorController = weaponData.animatorOverride;
         }
-
-        // --- NEW: LINK WEAPON TO COMBAT SCRIPT ---
-        WeaponDamage damageScript = currentWeaponInstance.GetComponent<WeaponDamage>();
         
-        if (enemyCombat != null && damageScript != null)
+        // 5. UPDATE ENEMY COMBAT [NEW]
+        // We get the specific script component from the new weapon object
+        WeaponDamage newWeaponScript = currentWeaponInstance.GetComponent<WeaponDamage>();
+        
+        if (combatScript != null && newWeaponScript != null)
         {
-            // Just pass the weapon so EnemyCombat can turn Hitboxes On/Off
-            enemyCombat.SetWeapon(damageScript);
+            combatScript.SetWeapon(newWeaponScript);
         }
     }
 }

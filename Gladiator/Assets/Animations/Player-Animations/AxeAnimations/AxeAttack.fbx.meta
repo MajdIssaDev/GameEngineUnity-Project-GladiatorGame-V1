@@ -58,21 +58,28 @@ ModelImporter:
       - time: 0.21776149
         functionName: OpenDamageWindow
         data: 
-        objectReferenceParameter: {fileID: 11500000, guid: 2c024379c0274a546959bff3ed62f70a, type: 3}
+        objectReferenceParameter: {instanceID: 0}
         floatParameter: 0
         intParameter: 0
         messageOptions: 0
       - time: 0.54657435
         functionName: CloseDamageWindow
         data: 
-        objectReferenceParameter: {fileID: 11500000, guid: 2c024379c0274a546959bff3ed62f70a, type: 3}
+        objectReferenceParameter: {instanceID: 0}
         floatParameter: 0
         intParameter: 0
         messageOptions: 0
       - time: 0.9710616
         functionName: FinishAttack
         data: 
-        objectReferenceParameter: {fileID: 11500000, guid: 2c024379c0274a546959bff3ed62f70a, type: 3}
+        objectReferenceParameter: {instanceID: 0}
+        floatParameter: 0
+        intParameter: 0
+        messageOptions: 0
+      - time: 0.6167639
+        functionName: OpenComboWindow
+        data: 
+        objectReferenceParameter: {instanceID: 0}
         floatParameter: 0
         intParameter: 0
         messageOptions: 0

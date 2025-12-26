@@ -1,133 +1,141 @@
 using UnityEngine;
 using UnityEngine.AI;
 
+[RequireComponent(typeof(NavMeshAgent))]
+[RequireComponent(typeof(Animator))]
 public class EnemyLocomotion : MonoBehaviour
 {
-    [Header("Components")]
-    public NavMeshAgent agent;
-    public Animator animator;
+    [Header("Targeting")]
     public Transform playerTarget;
+    public Animator animator;
 
-    [Header("Stats")]
-    public float movementSpeed = 3.5f;
-    public float rotationSpeed = 10f;
-    
-    [Header("Combat Settings")]
-    public float stoppingDistance = 2.0f;
-    [Tooltip("Distance at which enemy switches to Strafe Mode")]
-    public float strafeDistance = 8.0f; 
+    [Header("Movement Settings")]
+    [Tooltip("How close to get before stopping completely.")]
+    public float stopDistance = 2.0f;
+    [Tooltip("Distance at which the enemy switches from Running to Strafing.")]
+    public float strafeDistance = 5.0f;
+    [Tooltip("How fast the enemy turns to face the player while strafing.")]
+    public float rotationSpeed = 5.0f;
 
-    // --- SMART AI VARIABLES ---
-    private float myCircleAngle; // The specific angle this enemy wants to stand at (0=Front, 180=Back)
-    private float currentCooldown = 0f; // Timer to change position
+    [Header("Optimization")]
+    public float pathUpdateDelay = 0.2f;
 
-    private void Start()
+    private NavMeshAgent agent;
+    private float pathUpdateTimer;
+
+    void Start()
     {
-        if (agent == null) agent = GetComponent<NavMeshAgent>();
-        if (animator == null) animator = GetComponent<Animator>();
+        agent = GetComponent<NavMeshAgent>();
+        
+        if (animator == null)
+            animator = GetComponent<Animator>();
 
+        // AUTOMATIC SETUP IF PLAYER IS MISSING
         if (playerTarget == null)
         {
-            GameObject p = GameObject.FindGameObjectWithTag("Player");
-            if (p != null) playerTarget = p.transform;
+            GameObject player = GameObject.FindGameObjectWithTag("Player");
+            if (player != null) playerTarget = player.transform;
         }
 
-        agent.speed = movementSpeed;
-        agent.stoppingDistance = stoppingDistance;
-
-        // --- FIX 1: PRIORITY RANDOMIZATION ---
-        // Give each enemy a random priority (0 to 99). 
-        // Lower numbers = Higher priority. 
-        // This means "stronger" enemies push "weaker" ones out of the way, stopping the vibration/pushing war.
-        agent.avoidancePriority = Random.Range(0, 99);
-
-        // Assign a random starting angle around the player
-        myCircleAngle = Random.Range(0f, 360f);
+        SetupCrowdAvoidance();
     }
 
-    private void Update()
+    void Update()
     {
         if (playerTarget == null) return;
 
+        // 1. Update Navigation Destination
+        MoveToPlayer();
+
+        // 2. Handle Animation & Rotation Logic
+        HandleAnimationAndRotation();
+    }
+
+    void MoveToPlayer()
+    {
+        // Optimization: Don't calculate a new path every single frame
+        pathUpdateTimer += Time.deltaTime;
+        if (pathUpdateTimer >= pathUpdateDelay)
+        {
+            agent.SetDestination(playerTarget.position);
+            pathUpdateTimer = 0;
+        }
+
+        agent.stoppingDistance = stopDistance;
+    }
+
+    void HandleAnimationAndRotation()
+    {
         float distanceToPlayer = Vector3.Distance(transform.position, playerTarget.position);
         bool isStrafing = distanceToPlayer <= strafeDistance;
 
-        // Send state to Animator
-        if (animator != null) animator.SetBool("isStrafing", isStrafing);
+        // Pass the boolean to the Animator
+        animator.SetBool("isStrafing", isStrafing);
 
         if (isStrafing)
         {
-            // --- SMART FLANKING MODE ---
-            agent.updateRotation = false; 
-            HandleRotationTowardsPlayer();
-            HandleStrafeAnimation();
+            // --- STRAFING BEHAVIOR ---
             
-            // Reposition logic: periodically change where we want to stand
-            HandleSmartSurround(distanceToPlayer);
+            // 1. Disable Agent Auto-Rotation so we can face the player manually
+            agent.updateRotation = false;
+            
+            // 2. Face the Player
+            Vector3 directionToPlayer = (playerTarget.position - transform.position).normalized;
+            directionToPlayer.y = 0; // Keep flat
+            if (directionToPlayer != Vector3.zero)
+            {
+                Quaternion lookRotation = Quaternion.LookRotation(directionToPlayer);
+                transform.rotation = Quaternion.Slerp(transform.rotation, lookRotation, rotationSpeed * Time.deltaTime);
+            }
+
+            // 3. Calculate Local Velocity for InputX / InputY
+            // We convert the world velocity into "local" space (relative to how we are facing)
+            Vector3 relativeVelocity = transform.InverseTransformDirection(agent.velocity);
+            
+            // Normalize relative velocity by agent speed to get a value between -1 and 1
+            float vX = relativeVelocity.x / agent.speed; // Sideways
+            float vZ = relativeVelocity.z / agent.speed; // Forward/Back
+
+            animator.SetFloat("InputX", vX, 0.1f, Time.deltaTime);
+            animator.SetFloat("InputY", vZ, 0.1f, Time.deltaTime);
         }
         else
         {
-            // --- CHASE MODE (Run straight at player) ---
-            agent.updateRotation = true; 
-            HandleChaseAnimation();
+            // --- CHASING BEHAVIOR ---
             
-            // Just run directly to the player
-            agent.SetDestination(playerTarget.position);
+            // 1. Let the NavAgent handle rotation naturally
+            agent.updateRotation = true;
+
+            // 2. Just use magnitude for the "Running" speed
+            // We use 0.1f damp time to smooth out the animation changes
+            animator.SetFloat("Speed", agent.velocity.magnitude, 0.1f, Time.deltaTime);
+            
+            // Reset Strafe params so they don't get stuck
+            animator.SetFloat("InputX", 0, 0.1f, Time.deltaTime);
+            animator.SetFloat("InputY", 0, 0.1f, Time.deltaTime);
         }
     }
 
-    // --- NEW: SMART POSITIONING ---
-    void HandleSmartSurround(float distance)
+    void SetupCrowdAvoidance()
     {
-        // 1. Every few seconds, pick a new angle so we don't stay still forever
-        currentCooldown -= Time.deltaTime;
-        if (currentCooldown <= 0)
-        {
-            // Pick a new random slot around the player (e.g., move 45 degrees left or right)
-            myCircleAngle += Random.Range(-45f, 45f);
-            currentCooldown = Random.Range(2f, 5f);
-        }
-
-        // 2. Calculate the exact point on the ground based on our Angle
-        // Formula: PlayerPos + (DirectionFromAngle * Radius)
-        Vector3 offset = Quaternion.Euler(0, myCircleAngle, 0) * Vector3.forward * stoppingDistance;
-        Vector3 targetPosition = playerTarget.position + offset;
-
-        // 3. Move there
-        agent.SetDestination(targetPosition);
-
-        // 4. (Optional) If we are bumping into someone, rotate our angle faster to slide off them
-        if (agent.velocity.magnitude < 0.1f && distance > stoppingDistance + 1f)
-        {
-            // We are stopped but not at the target -> probably blocked by another enemy
-            myCircleAngle += 30f * Time.deltaTime; // Slide around the circle
-        }
+        // Randomized priority helps agents flow around each other
+        agent.avoidancePriority = Random.Range(30, 60);
+        agent.autoBraking = true; 
     }
-
-    void HandleRotationTowardsPlayer()
+    
+    // CALL THIS when an attack finishes to snap the enemy back to reality
+    public void ResumeMovement()
     {
-        Vector3 direction = (playerTarget.position - transform.position).normalized;
-        direction.y = 0; 
-        if (direction != Vector3.zero)
-        {
-            Quaternion lookRotation = Quaternion.LookRotation(direction);
-            transform.rotation = Quaternion.Slerp(transform.rotation, lookRotation, rotationSpeed * Time.deltaTime);
-        }
-    }
+        // 1. Re-enable rotation so the agent controls direction again
+        agent.updateRotation = true;
+        
+        // 2. Unpause the agent
+        agent.isStopped = false;
 
-    void HandleChaseAnimation()
-    {
-        float speed = agent.velocity.magnitude;
-        animator.SetFloat("Speed", speed, 0.1f, Time.deltaTime);
-        animator.SetFloat("InputX", 0f);
-        animator.SetFloat("InputY", 0f);
-    }
-
-    void HandleStrafeAnimation()
-    {
-        Vector3 velocity = agent.velocity;
-        Vector3 localVelocity = transform.InverseTransformDirection(velocity);
-        animator.SetFloat("InputY", localVelocity.z, 0.1f, Time.deltaTime);
-        animator.SetFloat("InputX", localVelocity.x, 0.1f, Time.deltaTime);
+        // 3. Force an immediate path calculation (bypass the optimization delay)
+        pathUpdateTimer = pathUpdateDelay; 
+        
+        // 4. Ensure Strafe/Move logic runs this frame
+        Update(); 
     }
 }

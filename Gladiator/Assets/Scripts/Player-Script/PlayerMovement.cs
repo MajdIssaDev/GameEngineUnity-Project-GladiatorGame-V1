@@ -11,155 +11,177 @@ public class PlayerMovement : MonoBehaviour
     public float rotationSpeed = 10f;
     public float gravity = -9.81f;
 
+    [Header("Roll Settings")]
+    public float rollSpeed = 10f;
+    public float rollDuration = 0.8f; 
+    public float rollCooldown = 1.0f;
+
     [Header("References")]
     public Animator animator;
     public Transform cameraTransform;
     public PlayerLockOn lockOn;
 
-    // --- NEW: Flag to stop movement ---
-    [HideInInspector] 
-    public bool isAttacking = false; 
+    // --- FLAGS ---
+    [HideInInspector] public bool isAttacking = false;
+    [HideInInspector] public bool isRolling = false;
 
     private CharacterController controller;
     private Vector3 verticalVelocity;
     private float currentSpeed;
+    
+    // Roll Timers
+    private float rollTimer;
+    private float lastRollTime;
+    private Vector3 fixedRollDirection;
 
     void Awake()
     {
         controller = GetComponent<CharacterController>();
-        if (cameraTransform == null)
+        if (cameraTransform == null && Camera.main != null)
             cameraTransform = Camera.main.transform;
 
         Cursor.lockState = CursorLockMode.Locked;
         Cursor.visible = false;
     }
 
-    void OnEnable()
-    {
-        currentSpeed = 0f;
-        verticalVelocity = Vector3.zero;
-        isAttacking = false;
-    }
-
     void Update()
     {
-        // --------------------------------------------------
-        // 1. INPUT & STATE CHECK
-        // --------------------------------------------------
+        // 1. GRAVITY (Always calculate vertical force)
+        if (controller.isGrounded && verticalVelocity.y < 0)
+        {
+            verticalVelocity.y = -2f;
+        }
+        verticalVelocity.y += gravity * Time.deltaTime;
+
+        // 2. CHECK ROLL INPUT
+        if (Input.GetKeyDown(KeyCode.Space))
+        {
+            TryStartRoll();
+        }
+
+        // 3. EXECUTE MOVEMENT
+        if (isRolling)
+        {
+            HandleRollingPhysics();
+        }
+        else
+        {
+            HandleStandardMovement();
+        }
+    }
+
+    void TryStartRoll()
+    {
+        // Debug checks
+        if (!controller.isGrounded) { Debug.Log("Can't roll: In Air"); return; }
+        if (isAttacking) { Debug.Log("Can't roll: Attacking"); return; }
+        if (isRolling) { return; }
+        if (Time.time < lastRollTime + rollCooldown) { return; }
+
+        Debug.Log("Starting Roll!"); // Check console for this
+
+        // Start Roll
+        isRolling = true;
+        rollTimer = rollDuration;
+        lastRollTime = Time.time;
+        
+        // Trigger Animation
+        if (animator != null) animator.SetTrigger("Roll");
+
+        // Calculate Roll Direction (Snap to camera or input)
+        float h = Input.GetAxisRaw("Horizontal");
+        float v = Input.GetAxisRaw("Vertical");
+        Vector3 inputDir = new Vector3(h, 0f, v).normalized;
+
+        if (inputDir.magnitude > 0.1f)
+        {
+            float targetAngle = Mathf.Atan2(inputDir.x, inputDir.z) * Mathf.Rad2Deg + cameraTransform.eulerAngles.y;
+            Quaternion targetRotation = Quaternion.Euler(0f, targetAngle, 0f);
+            transform.rotation = targetRotation; // Face roll direction instantly
+            fixedRollDirection = targetRotation * Vector3.forward;
+        }
+        else
+        {
+            fixedRollDirection = transform.forward; // Roll forward if no input
+        }
+    }
+
+    void HandleRollingPhysics()
+    {
+        rollTimer -= Time.deltaTime;
+
+        if (rollTimer <= 0)
+        {
+            // Stop Rolling
+            isRolling = false;
+            
+            // Speed Recovery Logic
+            float h = Input.GetAxisRaw("Horizontal");
+            float v = Input.GetAxisRaw("Vertical");
+            bool tryingToMove = new Vector3(h, 0, v).magnitude > 0.1f;
+            
+            if (tryingToMove)
+                currentSpeed = Input.GetKey(KeyCode.LeftShift) ? runSpeed : walkSpeed;
+            else
+                currentSpeed = 0f;
+            
+            return;
+        }
+
+        // Move Player using the fixed direction + Gravity
+        Vector3 finalMove = (fixedRollDirection * rollSpeed) + verticalVelocity;
+        controller.Move(finalMove * Time.deltaTime);
+    }
+
+    void HandleStandardMovement()
+    {
         float h = Input.GetAxisRaw("Horizontal");
         float v = Input.GetAxisRaw("Vertical");
         Vector3 input = new Vector3(h, 0f, v).normalized;
 
-        // If we are attacking, force input to zero so we don't move
-        if (isAttacking) 
-        {
-            input = Vector3.zero;
-        }
+        if (isAttacking) input = Vector3.zero;
 
         bool wantsToMove = input.magnitude > 0.1f;
         bool running = Input.GetKey(KeyCode.LeftShift);
 
-        float targetSpeed = wantsToMove
-            ? (running ? runSpeed : walkSpeed)
-            : 0f;
+        float targetSpeed = wantsToMove ? (running ? runSpeed : walkSpeed) : 0f;
+        float accel = (isAttacking) ? deceleration * 2f : (wantsToMove ? acceleration : deceleration);
 
-        // --------------------------------------------------
-        // 2. SPEED SMOOTHING
-        // --------------------------------------------------
-        float accel = wantsToMove ? acceleration : deceleration;
-        
-        // If attacking, stop instantly or decelerate fast? 
-        // Let's use normal deceleration so you don't "slide" on attack start
-        if (isAttacking) accel = deceleration * 2f; 
+        currentSpeed = Mathf.MoveTowards(currentSpeed, targetSpeed, accel * Time.deltaTime);
 
-        currentSpeed = Mathf.MoveTowards(
-            currentSpeed,
-            targetSpeed,
-            accel * Time.deltaTime
-        );
-
-        // --------------------------------------------------
-        // 3. ROTATION (Disable rotation if attacking!)
-        // --------------------------------------------------
-        if (!isAttacking)
+        // Rotation
+        if (!isAttacking && wantsToMove)
         {
             if (lockOn != null && lockOn.CurrentTarget != null)
             {
-                // LOCK-ON ROTATION (face enemy)
                 Vector3 toEnemy = lockOn.CurrentTarget.position - transform.position;
                 toEnemy.y = 0f;
-
                 if (toEnemy.sqrMagnitude > 0.001f)
-                {
-                    Quaternion targetRot = Quaternion.LookRotation(toEnemy);
-                    transform.rotation = Quaternion.Slerp(
-                        transform.rotation,
-                        targetRot,
-                        rotationSpeed * Time.deltaTime
-                    );
-                }
-            }
-            else if (wantsToMove)
-            {
-                // FREE ROTATION (camera-relative)
-                float targetAngle = Mathf.Atan2(input.x, input.z) * Mathf.Rad2Deg
-                                    + cameraTransform.eulerAngles.y;
-
-                Quaternion targetRot = Quaternion.Euler(0f, targetAngle, 0f);
-                transform.rotation = Quaternion.Slerp(
-                    transform.rotation,
-                    targetRot,
-                    rotationSpeed * Time.deltaTime
-                );
-            }
-        }
-
-        // --------------------------------------------------
-        // 4. MOVEMENT VECTOR
-        // --------------------------------------------------
-        Vector3 move = Vector3.zero;
-
-        // Only calculate movement direction if we actually have speed
-        if (currentSpeed > 0.1f)
-        {
-            if (lockOn != null && lockOn.CurrentTarget != null)
-            {
-                // STRAFING
-                Vector3 forward = transform.forward * v;
-                Vector3 right = transform.right * h;
-                move = (forward + right).normalized;
+                    transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.LookRotation(toEnemy), rotationSpeed * Time.deltaTime);
             }
             else
             {
-                // FREE MOVE
-                move = transform.forward;
+                float targetAngle = Mathf.Atan2(input.x, input.z) * Mathf.Rad2Deg + cameraTransform.eulerAngles.y;
+                transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.Euler(0f, targetAngle, 0f), rotationSpeed * Time.deltaTime);
             }
         }
 
-        move *= currentSpeed;
-
-        // --------------------------------------------------
-        // 5. GRAVITY (Always applies, even when attacking)
-        // --------------------------------------------------
-        if (controller.isGrounded)
+        // Movement
+        Vector3 moveDir = Vector3.zero;
+        if (currentSpeed > 0.1f)
         {
-            if (verticalVelocity.y < 0f)
-                verticalVelocity.y = -2f;
+             if (lockOn != null && lockOn.CurrentTarget != null)
+             {
+                 moveDir = (transform.forward * v + transform.right * h).normalized;
+             }
+             else
+             {
+                 moveDir = transform.forward;
+             }
         }
 
-        verticalVelocity.y += gravity * Time.deltaTime;
+        controller.Move((moveDir * currentSpeed + verticalVelocity) * Time.deltaTime);
 
-        // --------------------------------------------------
-        // 6. APPLY MOVEMENT
-        // --------------------------------------------------
-        controller.Move((move + verticalVelocity) * Time.deltaTime);
-
-        // --------------------------------------------------
-        // 7. ANIMATION
-        // --------------------------------------------------
-        if (animator != null)
-        {
-            animator.SetFloat("Speed", currentSpeed);
-        }
+        if (animator != null) animator.SetFloat("Speed", currentSpeed);
     }
 }

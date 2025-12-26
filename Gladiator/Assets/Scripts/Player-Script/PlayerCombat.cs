@@ -1,131 +1,192 @@
 using UnityEngine;
 
-public class PlayerCombat : MonoBehaviour
+// 1. Add the Interface here
+public class PlayerCombat : MonoBehaviour, ICombatReceiver
 {
     [Header("References")]
     public Animator animator;
-    public PlayerLocomotion movementScript; 
-    
+    public PlayerLocomotion movementScript;
     [SerializeField] Stats stats;
-    private WeaponDamage currentWeaponScript; 
     
-    // Store the default (Axe/Unarmed) controller here so we can switch back to it
-    private RuntimeAnimatorController baseController; 
+    // Reference to the Event Script
+    private CombatAnimationEvents animationEvents;
+    
+    private RuntimeAnimatorController baseController;
+    private WeaponDamage currentWeaponScript; 
 
-    private bool isAttacking = false;
-    private float nextAttackTime = 0f; 
+    // States
+    public bool isAttacking { get; private set; }
+    public bool isHeavyAttacking { get; private set; } 
+    private bool canCombo = false;      
+    private bool inputQueued = false;   
 
-    void Start()
+    // Logic Variables
+    private int comboStep = 0;
+    private float lastAttackTime = 0f;
+    private float maxAttackDuration = 2.0f; 
+    private float nextAttackTime = 0f;      
+
+    void Awake()
     {
+        if (animator == null) animator = GetComponent<Animator>();
         if (stats == null) stats = GetComponent<Stats>();
         
-        // SAVE the original controller (The one assigned in Inspector)
-        baseController = animator.runtimeAnimatorController;
+        // Grab the generic event script
+        animationEvents = animator.GetComponent<CombatAnimationEvents>();
+
+        baseController = animator.runtimeAnimatorController; 
+        isAttacking = false;
     }
 
-    // UPDATED: Now requires the weapon's Override Controller (can be null)
     public void EquipNewWeapon(GameObject newWeaponObject, AnimatorOverrideController overrideController)
     {
         currentWeaponScript = newWeaponObject.GetComponent<WeaponDamage>();
 
-        // 2. CHECK: Does this weapon have a special animation file?
+        // Pass the weapon to the generic event script
+        if (animationEvents != null)
+        {
+            animationEvents.SetCurrentWeapon(currentWeaponScript);
+        }
+
+        if (animator == null) animator = GetComponent<Animator>(); 
+        if (baseController == null) baseController = animator.runtimeAnimatorController;
+
         if (overrideController != null)
-        {
-            // YES (Spear) -> Use the special animations
             animator.runtimeAnimatorController = overrideController;
-        }
-        else
-        {
-            // NO (Axe) -> REVERT to the default animations we saved at Start()
+        else if (baseController != null)
             animator.runtimeAnimatorController = baseController;
-        }
+
+        ResetCombatState();
     }
+    
     void Update()
     {
-        if (Input.GetButtonDown("Fire1") && !isAttacking && Time.time >= nextAttackTime) 
+        // Failsafe
+        if (isAttacking && Time.time > lastAttackTime + maxAttackDuration)
+        {
+            OnFinishAttack(); // Call the interface method directly
+        }
+
+        // Input Handling
+        if (Input.GetButtonDown("Fire1"))
         {
             if (Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl))
             {
-                PerformHeavyAttack();
+                if (!isAttacking && Time.time >= nextAttackTime) PerformHeavyAttack();
             }
             else
             {
-                PerformNormalAttack();
+                if (isAttacking)
+                {
+                    if (!isHeavyAttacking) inputQueued = true;
+                }
+                else if (Time.time >= nextAttackTime)
+                {
+                    comboStep = 0;
+                    PerformComboStep();
+                }
             }
+        }
+
+        // Combo Logic
+        if (inputQueued && canCombo)
+        {
+            PerformComboStep();
+        }
+    }
+
+    void LateUpdate()
+    {
+        if (isHeavyAttacking)
+        {
+            if (!animator.applyRootMotion) animator.applyRootMotion = true;
+        }
+    }
+
+    void PerformComboStep()
+    {
+        isAttacking = true;
+        isHeavyAttacking = false; 
+        canCombo = false;    
+        inputQueued = false; 
+        lastAttackTime = Time.time;
+        
+        animator.applyRootMotion = false; 
+
+        if (movementScript != null) movementScript.isAttacking = true;
+        if (currentWeaponScript != null) currentWeaponScript.isHeavyAttack = false;
+
+        if (stats != null) animator.SetFloat("AttackSpeedMultiplier", stats.attackSpeed);
+
+        animator.ResetTrigger("Attack");
+        animator.ResetTrigger("AttackCombo");
+        animator.ResetTrigger("HeavyAttack");
+
+        if (comboStep == 0)
+        {
+            animator.SetTrigger("Attack");
+            comboStep = 1; 
+        }
+        else
+        {
+            animator.SetTrigger("AttackCombo");
+            comboStep = 0; 
         }
     }
 
     void PerformHeavyAttack()
     {
-        if (movementScript == null) return;
-
-        isAttacking = true; 
-        movementScript.isAttacking = true; 
+        isAttacking = true;
+        isHeavyAttacking = true;
+        canCombo = false;
+        inputQueued = false;
+        comboStep = 0;
+        lastAttackTime = Time.time;
+        
+        if (movementScript != null) movementScript.isAttacking = true;
 
         if (stats != null)
         {
             animator.SetFloat("AttackSpeedMultiplier", (stats.attackSpeed / 2) + 0.5f);
-            float attackDelay = (1f / stats.attackSpeed) + 0.5f; 
-            nextAttackTime = Time.time + attackDelay;
+            nextAttackTime = Time.time + ((1f / stats.attackSpeed) + 0.5f);
         }
 
         if (currentWeaponScript != null) currentWeaponScript.isHeavyAttack = true;
-
+        
+        animator.ResetTrigger("Attack");
+        animator.ResetTrigger("AttackCombo");
         animator.SetTrigger("HeavyAttack");
     }
 
-    void PerformNormalAttack()
+    // --- INTERFACE IMPLEMENTATION ---
+    // These names match the interface exactly
+
+    public void OnComboWindowOpen()
     {
-        if (movementScript == null) return;
+        if (!isHeavyAttacking) canCombo = true;
+    }
 
-        isAttacking = true; 
-        movementScript.isAttacking = true; 
+    public void OnFinishAttack()
+    {
+        if (Time.time - lastAttackTime < 0.2f) return;
 
-        if (stats != null)
-        {
-            animator.SetFloat("AttackSpeedMultiplier", stats.attackSpeed);
-            float attackDelay = 1f / stats.attackSpeed; 
-            nextAttackTime = Time.time + attackDelay;
-        }
+        ResetCombatState();
+        nextAttackTime = Time.time + 0.2f; 
+    }
+
+    private void ResetCombatState()
+    {
+        isAttacking = false;
+        isHeavyAttacking = false;
+        canCombo = false;
+        inputQueued = false;
+        comboStep = 0;
         
-        if (currentWeaponScript != null) currentWeaponScript.isHeavyAttack = false;
+        animator.applyRootMotion = false; 
+
+        if (movementScript != null) movementScript.isAttacking = false;
         
-        // --- SIMPLIFIED LOGIC ---
-        // We don't need if/else tags anymore. 
-        // If we hold a Spear, the animator is already swapped, so "Attack" plays the poke.
-        // If we hold an Axe, the animator is default, so "Attack" plays the swing.
-        animator.SetTrigger("Attack"); 
-    }
-
-    // --- Animation Events ---
-    public void OpenDamageWindow()
-    {
-        if (currentWeaponScript != null) currentWeaponScript.EnableHitbox();
-    }
-
-    public void CloseDamageWindow()
-    {
-        if (currentWeaponScript != null) currentWeaponScript.DisableHitbox();
-    }
-
-    public void FinishAttack()
-    {
-        isAttacking = false; 
-        if (movementScript != null) movementScript.isAttacking = false;
-    }
-    
-    // Add this to PlayerCombat.cs
-    public void TriggerRecoil()
-    {
-        // 1. Cancel attack state
-        isAttacking = false; 
-        if (movementScript != null) movementScript.isAttacking = false;
-
-        // 2. Stop the damage window immediately
-        CloseDamageWindow();
-
-        // 3. Play recoil animation
-        // Make sure you have a Trigger parameter named "Recoil" in your Animator
-        animator.SetTrigger("Recoil"); 
+        // Safety: ensure hitbox closes
+        if (animationEvents != null) animationEvents.CloseDamageWindow();
     }
 }

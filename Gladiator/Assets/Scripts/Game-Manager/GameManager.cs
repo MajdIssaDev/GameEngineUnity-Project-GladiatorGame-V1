@@ -167,9 +167,9 @@ public class GameManager : MonoBehaviour
             Animator anim = currentPlayerObject.GetComponent<Animator>();
             if (anim != null) 
             {
-                anim.SetFloat("InputMagnitude", 0f); 
-                anim.SetFloat("Vertical", 0f);
-                anim.SetFloat("Horizontal", 0f);
+                anim.SetFloat("Speed", 0f);   // Replaces "InputMagnitude"
+                anim.SetFloat("InputY", 0f);  // Replaces "Vertical"
+                anim.SetFloat("InputX", 0f);  // Replaces "Horizontal"
             }
         }
     }
@@ -232,9 +232,12 @@ public class GameManager : MonoBehaviour
         if (weaponHandler == null) return;
 
         // 1. Determine Tier logic
-        // Example: Round 1-3 = Tier 1. Round 4-6 = Tier 2.
-        int targetTier = Mathf.CeilToInt(roundOrLevel / 3.0f);
-        if (targetTier < 1) targetTier = 1;
+        // Formula: (Round - 1) / 5
+        // Integer division drops the decimal, creating "steps" every 5 rounds.
+        int targetTier = (roundOrLevel - 1) / 5;
+
+        // Safety check: Ensure we don't go below Tier 0 (e.g., if Round 0 is passed in)
+        if (targetTier < 0) targetTier = 0;
 
         // 2. Find a weapon matching that tier
         WeaponData weaponToGive = GetRandomWeaponByTier(targetTier);

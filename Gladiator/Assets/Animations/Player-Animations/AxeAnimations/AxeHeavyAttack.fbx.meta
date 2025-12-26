@@ -58,35 +58,35 @@ ModelImporter:
       - time: 0.9970264
         functionName: FinishAttack
         data: 
-        objectReferenceParameter: {fileID: 11500000, guid: 2c024379c0274a546959bff3ed62f70a, type: 3}
+        objectReferenceParameter: {instanceID: 0}
         floatParameter: 0
         intParameter: 0
         messageOptions: 0
       - time: 0.31148094
         functionName: OpenDamageWindow
         data: 
-        objectReferenceParameter: {fileID: 11500000, guid: 2c024379c0274a546959bff3ed62f70a, type: 3}
+        objectReferenceParameter: {instanceID: 0}
         floatParameter: 0
         intParameter: 0
         messageOptions: 0
       - time: 0.5393777
         functionName: CloseDamageWindow
         data: 
-        objectReferenceParameter: {fileID: 11500000, guid: 2c024379c0274a546959bff3ed62f70a, type: 3}
+        objectReferenceParameter: {instanceID: 0}
         floatParameter: 0
         intParameter: 0
         messageOptions: 0
       - time: 0.5780123
         functionName: OpenDamageWindow
         data: 
-        objectReferenceParameter: {fileID: 11500000, guid: 2c024379c0274a546959bff3ed62f70a, type: 3}
+        objectReferenceParameter: {instanceID: 0}
         floatParameter: 0
         intParameter: 0
         messageOptions: 0
       - time: 0.64793164
         functionName: CloseDamageWindow
         data: 
-        objectReferenceParameter: {fileID: 11500000, guid: 2c024379c0274a546959bff3ed62f70a, type: 3}
+        objectReferenceParameter: {instanceID: 0}
         floatParameter: 0
         intParameter: 0
         messageOptions: 0

@@ -31,6 +31,8 @@ public class WeaponDamage : MonoBehaviour
         // Ignore self
         if (other.transform.root == transform.root) return;
         if (transform.root.CompareTag(other.transform.root.tag)) return; //so enemies dont damage enemies
+        //ignore if player is in invincible phase
+        if (other.transform.GetComponent<HealthScript>().isInvincible) return;
 
         // --- 1. TRACK PARTS (Visuals) ---
         // If we already hit THIS specific arm collider, skip it.
@@ -81,8 +83,12 @@ public class WeaponDamage : MonoBehaviour
         myCollider.enabled = true;
     }
 
-    public void DisableHitbox() 
+    public void DisableHitbox()
     {
-        myCollider.enabled = false;
+        // Add this check!
+        // If the damageCollider variable is null, return immediately to prevent crash.
+        if (myCollider == null) return; 
+
+        myCollider.enabled = false; 
     }
 }
