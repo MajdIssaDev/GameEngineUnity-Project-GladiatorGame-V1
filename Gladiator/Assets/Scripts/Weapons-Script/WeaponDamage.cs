@@ -31,8 +31,6 @@ public class WeaponDamage : MonoBehaviour
         // Ignore self
         if (other.transform.root == transform.root) return;
         if (transform.root.CompareTag(other.transform.root.tag)) return; //so enemies dont damage enemies
-        //ignore if player is in invincible phase
-        if (other.transform.GetComponent<HealthScript>().isInvincible) return;
 
         // --- 1. TRACK PARTS (Visuals) ---
         // If we already hit THIS specific arm collider, skip it.
@@ -60,6 +58,8 @@ public class WeaponDamage : MonoBehaviour
             HealthScript health = other.GetComponentInParent<HealthScript>();
             if (health != null)
             {
+                if (health.isInvincible) return;
+                
                 float finalDamage = isHeavyAttack ? damageAmount * 1.5f : damageAmount;
                 if (ownerStats != null) finalDamage += ownerStats.strength;
                 health.takeDamage(finalDamage);
