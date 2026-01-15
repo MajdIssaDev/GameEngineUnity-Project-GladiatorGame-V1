@@ -14,4 +14,7 @@ public class WeaponData : ScriptableObject
     [Header("Visuals")]
     public GameObject weaponPrefab; 
     public AnimatorOverrideController animatorOverride; 
+    
+    [Header("Audio")]
+    public AudioClip[] hitSounds;
 }

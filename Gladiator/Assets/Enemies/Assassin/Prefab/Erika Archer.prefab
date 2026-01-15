@@ -1083,6 +1083,7 @@ GameObject:
   - component: {fileID: 2835323530626095810}
   - component: {fileID: 7636690306925440615}
   - component: {fileID: 7277426004623510131}
+  - component: {fileID: 6903862057659163352}
   m_Layer: 6
   m_Name: Erika Archer
   m_TagString: Enemy
@@ -1187,6 +1188,7 @@ MonoBehaviour:
   stats: {fileID: 2225068052605545231}
   playerHudSlider: {fileID: 0}
   enemyFloatingBar: {fileID: 0}
+  isInvincible: 0
 --- !u!114 &2225068052605545231
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1244,7 +1246,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   rightHandSocket: {fileID: 4039734448651640575}
   enemyAnimator: {fileID: 9077499657386895486}
-  enemyCombat: {fileID: 7277426004623510131}
+  combatScript: {fileID: 0}
   weaponOffsets:
   - weaponTag: Axe
     positionOffset: {x: -0.026, y: 0.048, z: 0.026}
@@ -1286,13 +1288,12 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: bbf6b38af6899894f8d3d17f50f87bcb, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  agent: {fileID: 0}
-  animator: {fileID: 0}
   playerTarget: {fileID: 0}
-  movementSpeed: 3.5
-  rotationSpeed: 10
-  stoppingDistance: 2
+  animator: {fileID: 0}
+  stopDistance: 2
   strafeDistance: 8
+  rotationSpeed: 10
+  pathUpdateDelay: 0.2
 --- !u!114 &7277426004623510131
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1306,15 +1307,34 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   animator: {fileID: 9077499657386895486}
-  locomotion: {fileID: 7636690306925440615}
-  stats: {fileID: 2225068052605545231}
+  statsScript: {fileID: 0}
   attackRange: 2.5
-  minCooldown: 2
-  maxCooldown: 4
-  surpriseAttackChance: 30
-  hitStunDuration: 0.5
-  shuffleSpeed: 1
-  shuffleInterval: 3
+  attackCooldown: 2
+  minAttackDelay: 0.2
+  heavyAttackChance: 0.3
+  comboChance: 0.6
+  maxDodgeChance: 75
+  dodgeCooldown: 3
+--- !u!114 &6903862057659163352
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2328991782899755198}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 155040f81154e674d8e5c7a407c1d81a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  playerTarget: {fileID: 0}
+  playerTag: Player
+  chaseSpeed: 5
+  strafeSpeed: 2
+  strafeDistance: 8
+  minCrowdDistance: 2
+  waitInterval: {x: 2, y: 5}
+  moveDuration: {x: 0.5, y: 1.2}
 --- !u!1 &2521235720828239002
 GameObject:
   m_ObjectHideFlags: 0

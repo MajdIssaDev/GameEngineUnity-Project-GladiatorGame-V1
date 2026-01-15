@@ -9,7 +9,7 @@ AnimatorOverrideController:
   m_Name: Spear_Animation
   m_Controller: {fileID: 9100000, guid: cbe76beadff4012448d78e42da7077a7, type: 2}
   m_Clips:
-  - m_OriginalClip: {fileID: -203655887218126122, guid: f59dd8ac0a642dc45abbfeb8206a6743, type: 3}
-    m_OverrideClip: {fileID: -203655887218126122, guid: e830e8005ff14fb4c94c1a316fd69482, type: 3}
   - m_OriginalClip: {fileID: -203655887218126122, guid: 44c63f3b37ef5644f955a357395f3f4a, type: 3}
-    m_OverrideClip: {fileID: -203655887218126122, guid: 2f47e59d49ef7d94c906e54eba8c6db2, type: 3}
+    m_OverrideClip: {fileID: -203655887218126122, guid: e80a00c519350ac449f4598598974f80, type: 3}
+  - m_OriginalClip: {fileID: -203655887218126122, guid: f59dd8ac0a642dc45abbfeb8206a6743, type: 3}
+    m_OverrideClip: {fileID: -203655887218126122, guid: 5c436ad4f4416fe42a384a69dfdb06b8, type: 3}

@@ -1,49 +1,82 @@
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
+using System.Collections;
 
 public class ShopSlot : MonoBehaviour
 {
-    public WeaponData weaponToSell; 
+    // We hide this from Inspector so you don't think you need to set it manually anymore
+    [HideInInspector] public WeaponData weaponToSell; 
     
     [Header("UI References")]
     public TextMeshProUGUI nameText;
     public TextMeshProUGUI priceText;
     public Button myButton;
+    
+    [Header("Audio")]
+    public AudioClip BuySound;
+    public AudioClip EquipSound;
+    public AudioClip UnableBuy;
+    
+    [Header("Feedback")]
+    public Color errorColor = Color.red; // The color to flash
+    public float flashDuration = 0.15f;  // How long it stays red
 
-    private void Start()
+    private ColorBlock originalColors;   // To remember what the button looked like before
+    private Coroutine currentFlashRoutine;
+
+    // --- 1. SETUP FUNCTION (Called by ShopPopulator) ---
+    
+    private void Awake()
     {
-        // 1. NUCLEAR FIX: If no weapon is assigned, DISABLE this script immediately.
-        if (weaponToSell == null)
+        // Save the button's original colors as soon as the game starts
+        if (myButton != null)
         {
-            // Clear text so it doesn't look like a glitch
-            if (nameText != null) nameText.text = "Empty";
-            if (priceText != null) priceText.text = "";
-            
-            // Make button unclickable
-            if (myButton != null) myButton.interactable = false;
-
-            // Stop this script from ever running Update()
-            this.enabled = false; 
-            return;
+            originalColors = myButton.colors;
         }
-
-        // Setup visuals if we have data
-        if (nameText != null) nameText.text = weaponToSell.weaponName;
-        if (priceText != null) priceText.text = "$" + weaponToSell.price;
     }
-
-    private void Update()
+    
+    public void Setup(WeaponData newData)
     {
-        // 2. EXTRA SAFETY: If GameManager isn't ready yet, wait.
-        if (GameManager.Instance == null) return;
+        weaponToSell = newData;
 
-        UpdateButtonState();
+        if (weaponToSell != null)
+        {
+            // Update Visuals immediately
+            if (nameText != null) nameText.text = weaponToSell.weaponName;
+            
+            // Check prices/owned status immediately
+            UpdateButtonState();
+        }
     }
 
+    // --- 2. EVENT SUBSCRIPTION ---
+    private void OnEnable()
+    {
+        // Subscribe to updates (Using OnEnable ensures it works if you close/open the shop)
+        if (GameManager.Instance != null)
+        {
+            GameManager.Instance.OnShopUpdated += UpdateButtonState;
+            
+            // If we are enabling the panel, force a refresh
+            UpdateButtonState();
+        }
+    }
+
+    private void OnDisable()
+    {
+        if (GameManager.Instance != null)
+        {
+            GameManager.Instance.OnShopUpdated -= UpdateButtonState;
+        }
+    }
+
+    // --- 3. STATE LOGIC ---
     void UpdateButtonState()
     {
-        // This is the line that was crashing (Line 47)
+        // Safety check: If Populator hasn't run yet, or GameManager is missing, stop.
+        if (weaponToSell == null || GameManager.Instance == null) return;
+
         bool isOwned = GameManager.Instance.ownedWeapons.Contains(weaponToSell);
         bool isEquipped = GameManager.Instance.equippedWeapon == weaponToSell;
 
@@ -61,7 +94,7 @@ public class ShopSlot : MonoBehaviour
         {
             if (priceText != null) priceText.text = "$" + weaponToSell.price;
             if (myButton != null) 
-                myButton.interactable = (GameManager.Instance.money >= weaponToSell.price);
+                myButton.interactable = true;
         }
     }
 
@@ -74,6 +107,8 @@ public class ShopSlot : MonoBehaviour
         if (isOwned)
         {
             GameManager.Instance.equippedWeapon = weaponToSell;
+            GameManager.Instance.RefreshShopUI();
+            PlaySound(EquipSound);
         }
         else
         {
@@ -82,7 +117,59 @@ public class ShopSlot : MonoBehaviour
                 GameManager.Instance.money -= weaponToSell.price;
                 GameManager.Instance.ownedWeapons.Add(weaponToSell);
                 GameManager.Instance.equippedWeapon = weaponToSell;
+                
+                GameManager.Instance.RefreshShopUI();
+                PlaySound(BuySound);
+            }
+            else
+            {
+                PlaySound(UnableBuy);
+                if (currentFlashRoutine != null) StopCoroutine(currentFlashRoutine);
+                currentFlashRoutine = StartCoroutine(FlashErrorColor());
             }
         }
+    }
+    
+    // --- THE FLASH LOGIC ---
+    IEnumerator FlashErrorColor()
+    {
+        if (myButton == null) yield break;
+
+        // 1. Create a "Red" version of the button settings
+        ColorBlock errorBlock = myButton.colors;
+        errorBlock.normalColor = errorColor;
+        errorBlock.highlightedColor = errorColor; // Also make it red even if mouse is over it
+        errorBlock.pressedColor = errorColor;
+        errorBlock.selectedColor = errorColor;
+
+        // 2. Apply Red
+        myButton.colors = errorBlock;
+
+        // 3. Wait for 0.15 seconds
+        yield return new WaitForSeconds(flashDuration);
+
+        // 4. Revert to Original colors
+        myButton.colors = originalColors;
+    }
+    
+    void PlaySound(AudioClip clip)
+    {
+        if (clip == null) return;
+
+        Vector3 soundPosition;
+
+        // 1. Try to find the Main Camera
+        if (Camera.main != null)
+        {
+            soundPosition = Camera.main.transform.position;
+        }
+        // 2. Fallback: If no camera is found, play at the button's own position
+        else 
+        {
+            soundPosition = transform.position;
+        }
+
+        // 3. Play the sound (Requires Clip AND Position)
+        AudioSource.PlayClipAtPoint(clip, soundPosition);
     }
 }

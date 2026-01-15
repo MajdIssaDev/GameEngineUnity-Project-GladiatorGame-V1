@@ -14,6 +14,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   weaponName: Iron Spear
   price: 100
-  damage: 20
-  animatorOverride: {fileID: 22100000, guid: 78c1ab1bef51b344e8a95b428285da04, type: 2}
+  tier: 1
   weaponPrefab: {fileID: 8643226546923362071, guid: a7952c6afcc365141ab6c0b9a5d31931, type: 3}
+  animatorOverride: {fileID: 22100000, guid: 78c1ab1bef51b344e8a95b428285da04, type: 2}
+  hitSounds:
+  - {fileID: 8300000, guid: 4fcb1e298ab7c5a42b8c415d200c9ea2, type: 3}

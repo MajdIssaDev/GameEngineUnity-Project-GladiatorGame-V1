@@ -156,7 +156,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   playerTarget: {fileID: 0}
   playerTag: Player
-  chaseSpeed: 3.5
+  chaseSpeed: 5
   strafeSpeed: 2
   strafeDistance: 2
   minCrowdDistance: 2

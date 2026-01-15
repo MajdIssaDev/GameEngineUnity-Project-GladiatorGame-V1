@@ -17,6 +17,9 @@ public class WeaponDamage : MonoBehaviour
     // Track Hitboxes (Bones) separately from Enemies (Health)
     private List<Collider> hitParts = new List<Collider>(); 
     private List<GameObject> damagedEnemies = new List<GameObject>(); 
+    
+    [Header("Audio")]
+    public AudioClip[] hitSounds;
 
     private void Start()
     {
@@ -24,6 +27,7 @@ public class WeaponDamage : MonoBehaviour
         myCollider.enabled = false;
         if (ownerStats == null) ownerStats = GetComponentInParent<Stats>();
         if (playerCombat == null) playerCombat = GetComponentInParent<PlayerCombat>();
+        
     }
 
     private void OnTriggerEnter(Collider other)
@@ -31,6 +35,12 @@ public class WeaponDamage : MonoBehaviour
         // Ignore self
         if (other.transform.root == transform.root) return;
         if (transform.root.CompareTag(other.transform.root.tag)) return; //so enemies dont damage enemies
+
+        // --- FIX START: Define a safe hit point to use everywhere ---
+        // We use the weapon's current position as the impact point.
+        // This avoids the "Convex MeshCollider" error entirely.
+        Vector3 safeHitPoint = transform.position;
+        // --------------------------------------------------------
 
         // --- 1. TRACK PARTS (Visuals) ---
         // If we already hit THIS specific arm collider, skip it.
@@ -41,9 +51,8 @@ public class WeaponDamage : MonoBehaviour
         
         if (reaction != null)
         {
-            // Pass the collider 'other' so the script knows EXACTLY which bone we hit
-            // (We wrote this support in the previous step)
-            reaction.HandleHit(other, other.ClosestPoint(transform.position), transform.forward);
+            // Pass the safeHitPoint instead of calculating ClosestPoint
+            reaction.HandleHit(other, safeHitPoint, transform.forward);
         }
 
         // --- 2. TRACK DAMAGE (Health) ---
@@ -63,6 +72,9 @@ public class WeaponDamage : MonoBehaviour
                 float finalDamage = isHeavyAttack ? damageAmount * 1.5f : damageAmount;
                 if (ownerStats != null) finalDamage += ownerStats.strength;
                 health.takeDamage(finalDamage);
+                
+                // Use the safeHitPoint for sound as well
+                PlayHitSound(safeHitPoint);
             }
 
             // Apply Knockback
@@ -90,5 +102,25 @@ public class WeaponDamage : MonoBehaviour
         if (myCollider == null) return; 
 
         myCollider.enabled = false; 
+    }
+    
+    public void Initialize(WeaponData data)
+    {
+        // If the specific weapon has sounds, use them.
+        if (data.hitSounds != null && data.hitSounds.Length > 0)
+        {
+            this.hitSounds = data.hitSounds;
+        }
+    }
+    
+    void PlayHitSound(Vector3 position)
+    {
+        if (hitSounds.Length > 0)
+        {
+            int index = Random.Range(0, hitSounds.Length);
+            
+            // AudioSource.PlayClipAtPoint creates a temporary object at that spot to play the sound
+            AudioSource.PlayClipAtPoint(hitSounds[index], position);
+        }
     }
 }

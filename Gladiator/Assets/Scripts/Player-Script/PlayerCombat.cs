@@ -23,7 +23,7 @@ public class PlayerCombat : MonoBehaviour, ICombatReceiver
     // Logic Variables
     private int comboStep = 0;
     private float lastAttackTime = 0f;
-    private float maxAttackDuration = 2.0f; 
+    private float maxAttackDuration = 5.0f; 
     private float nextAttackTime = 0f;      
 
     void Awake()

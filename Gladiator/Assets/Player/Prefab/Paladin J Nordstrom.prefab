@@ -491,8 +491,8 @@ MonoBehaviour:
     positionOffset: {x: 0.0062, y: 0.0667, z: 0.0325}
     rotationOffset: {x: -0.936, y: -4.019, z: 87.624}
   - weaponTag: Sword
-    positionOffset: {x: 0.0133, y: 0.0672, z: 0.021}
-    rotationOffset: {x: 0, y: 0, z: 98.871}
+    positionOffset: {x: -0.0067, y: 0.0802, z: 0.021}
+    rotationOffset: {x: 0, y: 0, z: 76.066}
 --- !u!114 &479108141055875655
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -647,7 +647,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 104c45b69cf6d414b9bab49353fed12a, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  playerCombat: {fileID: 479108141055875655}
 --- !u!4 &7243912113319982581 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 6000407479487422213, guid: da6a0a5a856d6e242815376e9e80ccfe, type: 3}

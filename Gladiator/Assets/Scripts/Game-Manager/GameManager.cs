@@ -1,11 +1,20 @@
 using UnityEngine;
 using System.Collections.Generic;
 using TMPro;
-using System.Linq; // Needed for list filtering
+using System.Linq; 
+using System; // Required for Actions
 
 public class GameManager : MonoBehaviour
 {
     public static GameManager Instance;
+
+    // --- NEW EVENTS ---
+    // 1. Fires when Round Ends (Passes the Player Object to the UI)
+    public event Action<GameObject> OnShopOpened;
+    
+    // 2. Fires when Money changes or Items are bought (Refreshes UI buttons)
+    public event Action OnShopUpdated;
+    // ------------------
 
     [Header("Player Data")]
     public int money = 0;
@@ -24,10 +33,7 @@ public class GameManager : MonoBehaviour
     public List<GameObject> normalEnemyTable; 
     public List<GameObject> bossEnemyTable;   
     public Transform[] enemySpawnPoints; 
-    
-    // --- NEW: LIST OF ALL WEAPONS ENEMIES CAN USE ---
     public List<WeaponData> globalEnemyWeaponList; 
-    // -----------------------------------------------
 
     [Header("UI Panels")]
     public GameObject mainMenuPanel;
@@ -42,6 +48,7 @@ public class GameManager : MonoBehaviour
     public UnityEngine.UI.Slider playerHealthBar;
     
     private GameObject currentPlayerObject;
+    private GameObject MainCamera;
 
     private void Awake()
     {
@@ -53,14 +60,14 @@ public class GameManager : MonoBehaviour
     private void Start()
     {
         ShowMainMenu();
+        MainCamera = GameObject.Find("Main Camera");
     }
 
     private void Update()
     {
+        // Still okay to keep this here for HUD, but the Shop uses events now
         if (moneyText != null) moneyText.text = "Gold: " + money;
     }
-
-    // --- BUTTON EVENTS ---
 
     public void OnPlayButtonPressed()
     {
@@ -84,6 +91,13 @@ public class GameManager : MonoBehaviour
 
             currentPlayerObject.transform.position = playerSpawnPoint.position;
             currentPlayerObject.transform.rotation = playerSpawnPoint.rotation;
+            HealthScript pHealth = currentPlayerObject.GetComponent<HealthScript>();
+            if (pHealth != null)
+            {
+                pHealth.playerHudSlider = playerHealthBar; 
+                pHealth.setCurrentHealth(pHealth.getMaxHealth());
+            }
+            MainCamera.GetComponent<SoulsCamera>().enabled = true;
 
             if (cc != null) cc.enabled = true;
 
@@ -105,8 +119,6 @@ public class GameManager : MonoBehaviour
         Application.Quit();
     }
 
-    // --- GAME LOGIC ---
-
     void ShowMainMenu()
     {
         mainMenuPanel.SetActive(true);
@@ -118,7 +130,6 @@ public class GameManager : MonoBehaviour
     {
         currentRound++;
         if (roundText != null) roundText.text = "Round: " + currentRound;
-        
         SpawnEnemies();
     }
 
@@ -135,19 +146,12 @@ public class GameManager : MonoBehaviour
         }
 
         SoulsCamera camScript = FindObjectOfType<SoulsCamera>();
-        if (camScript != null)
-        {
-            camScript.SetPlayerTarget(currentPlayerObject);
-        }
+        if (camScript != null) camScript.SetPlayerTarget(currentPlayerObject);
         
         HealthScript pHealth = currentPlayerObject.GetComponent<HealthScript>();
-        
         if (pHealth != null)
         {
-            // 1. Assign the Slider FIRST so the script knows what UI to update
             pHealth.playerHudSlider = playerHealthBar; 
-
-            // 2. THEN heal the player (which triggers the slider update)
             pHealth.setCurrentHealth(pHealth.getMaxHealth());
         }
     }
@@ -155,10 +159,8 @@ public class GameManager : MonoBehaviour
     void SetPlayerControls(bool isActive)
     {
         if (currentPlayerObject == null) return;
-
         PlayerLocomotion movement = currentPlayerObject.GetComponent<PlayerLocomotion>();
         if (movement != null) movement.enabled = isActive;
-
         PlayerCombat combat = currentPlayerObject.GetComponent<PlayerCombat>();
         if (combat != null) combat.enabled = isActive;
 
@@ -167,9 +169,9 @@ public class GameManager : MonoBehaviour
             Animator anim = currentPlayerObject.GetComponent<Animator>();
             if (anim != null) 
             {
-                anim.SetFloat("Speed", 0f);   // Replaces "InputMagnitude"
-                anim.SetFloat("InputY", 0f);  // Replaces "Vertical"
-                anim.SetFloat("InputX", 0f);  // Replaces "Horizontal"
+                anim.SetFloat("Speed", 0f);   
+                anim.SetFloat("InputY", 0f);  
+                anim.SetFloat("InputX", 0f);  
             }
         }
     }
@@ -185,22 +187,21 @@ public class GameManager : MonoBehaviour
         if (bossEnemyTable.Count == 0) return;
         enemiesAlive = 1; 
 
-        GameObject bossToSpawn = bossEnemyTable[Random.Range(0, bossEnemyTable.Count)];
-        Transform spawnPoint = enemySpawnPoints[Random.Range(0, enemySpawnPoints.Length)];
+        GameObject bossToSpawn = bossEnemyTable[UnityEngine.Random.Range(0, bossEnemyTable.Count)];
+        Transform spawnPoint = enemySpawnPoints[UnityEngine.Random.Range(0, enemySpawnPoints.Length)];
         GameObject newBoss = Instantiate(bossToSpawn, spawnPoint.position, spawnPoint.rotation);
 
         Stats bossStats = newBoss.GetComponent<Stats>();
         if (bossStats != null) bossStats.SetLevel(currentRound);
 
-        // --- NEW: EQUIP BOSS WEAPON ---
-        EquipEnemyBasedOnRound(newBoss, currentRound + 2); // Boss gets slightly better gear
+        EquipEnemyBasedOnRound(newBoss, currentRound + 2); 
     }
 
     void SpawnNormalWave()
     {
         if (normalEnemyTable.Count == 0) return;
 
-        int count = Random.Range(1, 4); 
+        int count = UnityEngine.Random.Range(1, 4); 
         List<Transform> availablePoints = new List<Transform>(enemySpawnPoints);
 
         if (count > availablePoints.Count) count = availablePoints.Count;
@@ -208,9 +209,9 @@ public class GameManager : MonoBehaviour
 
         for (int i = 0; i < count; i++)
         {
-            GameObject enemyToSpawn = normalEnemyTable[Random.Range(0, normalEnemyTable.Count)];
+            GameObject enemyToSpawn = normalEnemyTable[UnityEngine.Random.Range(0, normalEnemyTable.Count)];
             
-            int index = Random.Range(0, availablePoints.Count);
+            int index = UnityEngine.Random.Range(0, availablePoints.Count);
             Transform selectedPoint = availablePoints[index];
             availablePoints.RemoveAt(index);
             
@@ -219,43 +220,27 @@ public class GameManager : MonoBehaviour
             Stats enemyStats = newEnemy.GetComponent<Stats>();
             if (enemyStats != null) enemyStats.SetLevel(currentRound);
 
-            // --- NEW: EQUIP ENEMY WEAPON ---
             EquipEnemyBasedOnRound(newEnemy, currentRound);
         }
     }
-
-    // --- NEW HELPER FUNCTIONS FOR WEAPON TIERING ---
 
     void EquipEnemyBasedOnRound(GameObject enemy, int roundOrLevel)
     {
         EnemyWeaponHandler weaponHandler = enemy.GetComponent<EnemyWeaponHandler>();
         if (weaponHandler == null) return;
 
-        // 1. Determine Tier logic
-        // Formula: (Round - 1) / 5
-        // Integer division drops the decimal, creating "steps" every 5 rounds.
         int targetTier = (roundOrLevel - 1) / 5;
-
-        // Safety check: Ensure we don't go below Tier 0 (e.g., if Round 0 is passed in)
         if (targetTier < 0) targetTier = 0;
 
-        // 2. Find a weapon matching that tier
         WeaponData weaponToGive = GetRandomWeaponByTier(targetTier);
 
-        // 3. Equip it
-        if (weaponToGive != null)
-        {
-            weaponHandler.EquipWeapon(weaponToGive);
-        }
+        if (weaponToGive != null) weaponHandler.EquipWeapon(weaponToGive);
     }
 
     WeaponData GetRandomWeaponByTier(int tier)
     {
-        // Find all weapons matching the tier
         List<WeaponData> potentialWeapons = globalEnemyWeaponList.Where(w => w.tier == tier).ToList();
 
-        // If no weapons found for this tier (e.g., Tier 10 requested but we only made up to Tier 3)
-        // Then get the highest available tier weapons instead.
         if (potentialWeapons.Count == 0 && globalEnemyWeaponList.Count > 0)
         {
             int maxTier = globalEnemyWeaponList.Max(w => w.tier);
@@ -264,10 +249,8 @@ public class GameManager : MonoBehaviour
 
         if (potentialWeapons.Count == 0) return null;
 
-        return potentialWeapons[Random.Range(0, potentialWeapons.Count)];
+        return potentialWeapons[UnityEngine.Random.Range(0, potentialWeapons.Count)];
     }
-
-    // ----------------------------------------------
 
     public void EnemyDefeated()
     {
@@ -286,11 +269,28 @@ public class GameManager : MonoBehaviour
         Debug.Log("Round Complete!");
         SetPlayerControls(false); 
         hudPanel.SetActive(false);
-        shopPanel.SetActive(true);
+        
+        // 1. ACTIVATE SHOP PANEL FIRST (So scripts awake and listen)
+        shopPanel.SetActive(true); 
+
+        // 2. TRIGGER THE EVENT (Passes the player to the UI scripts)
+        OnShopOpened?.Invoke(currentPlayerObject);
+
+        // 3. Trigger initial update for buttons
+        OnShopUpdated?.Invoke();
+        MainCamera.GetComponent<SoulsCamera>().enabled = false;
     }
 
     public void AddMoney(int amount)
     {
         money += amount;
+        // Notify UI that money changed
+        OnShopUpdated?.Invoke();
+    }
+    
+    // Helper to let UI scripts trigger a refresh manually
+    public void RefreshShopUI()
+    {
+        OnShopUpdated?.Invoke();
     }
 }

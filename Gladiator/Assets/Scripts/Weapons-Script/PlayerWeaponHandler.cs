@@ -70,5 +70,11 @@ public class PlayerWeaponHandler : MonoBehaviour
             // This fixes your "takes 2 parameters but sending 1" error
             playerCombat.EquipNewWeapon(currentWeaponInstance, newWeaponData.animatorOverride);
         }
+        
+        WeaponDamage damageScript = currentWeaponInstance.GetComponent<WeaponDamage>();
+        if (damageScript != null)
+        {
+            damageScript.Initialize(newWeaponData);
+        }
     }
 }

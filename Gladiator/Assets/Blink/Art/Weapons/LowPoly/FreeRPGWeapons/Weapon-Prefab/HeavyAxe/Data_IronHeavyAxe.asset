@@ -14,5 +14,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   weaponName: Iron Heavy Axe
   price: 150
+  tier: 1
   weaponPrefab: {fileID: 3984786163006170402, guid: ffd9d7576105cd64e8be7a525f75db45, type: 3}
   animatorOverride: {fileID: 22100000, guid: 98c68f7f122c3a54e93631b1764565ed, type: 2}
+  hitSounds:
+  - {fileID: 8300000, guid: 4fcb1e298ab7c5a42b8c415d200c9ea2, type: 3}

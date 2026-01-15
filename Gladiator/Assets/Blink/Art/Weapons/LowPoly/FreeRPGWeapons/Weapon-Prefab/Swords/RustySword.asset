@@ -17,3 +17,5 @@ MonoBehaviour:
   tier: 0
   weaponPrefab: {fileID: 8697160680409007716, guid: d3fe98ffbf5d24e42a3f1459a79c45a9, type: 3}
   animatorOverride: {fileID: 22100000, guid: 48bd1eb6a49ba2841b7db4769771ff44, type: 2}
+  hitSounds:
+  - {fileID: 8300000, guid: 4fcb1e298ab7c5a42b8c415d200c9ea2, type: 3}

@@ -84,6 +84,7 @@ public class EnemyWeaponHandler : MonoBehaviour
         if (combatScript != null && newWeaponScript != null)
         {
             combatScript.SetWeapon(newWeaponScript);
+            newWeaponScript.Initialize(weaponData);
         }
     }
 }
