@@ -49,6 +49,10 @@ public class SoulsCamera : MonoBehaviour
     void LateUpdate()
     {
         if (playerTransform == null) return;
+        if (Time.deltaTime <= float.Epsilon || Time.timeScale == 0f) 
+        {
+            return; 
+        }
 
         Vector3 focusPoint = playerTransform.position + Vector3.up * heightOffset;
         bool isLocked = lockOnScript != null && lockOnScript.CurrentTarget != null;

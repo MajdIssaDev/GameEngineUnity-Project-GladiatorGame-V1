@@ -17,4 +17,5 @@ public class WeaponData : ScriptableObject
     
     [Header("Audio")]
     public AudioClip[] hitSounds;
+    public AudioClip swingSound;
 }

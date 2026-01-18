@@ -20,14 +20,22 @@ public class WeaponDamage : MonoBehaviour
     
     [Header("Audio")]
     public AudioClip[] hitSounds;
+    private AudioClip swingSound;
 
+    [Header("Visuals")]
+    public TrailRenderer weaponTrail;
+    
     private void Start()
     {
         myCollider = GetComponent<BoxCollider>();
         myCollider.enabled = false;
         if (ownerStats == null) ownerStats = GetComponentInParent<Stats>();
         if (playerCombat == null) playerCombat = GetComponentInParent<PlayerCombat>();
-        
+        if (weaponTrail != null)
+        {
+            weaponTrail.emitting = false; // Ensure it's off
+            weaponTrail.Clear();          // Delete any lines created during Spawn/Teleport
+        }
     }
 
     private void OnTriggerEnter(Collider other)
@@ -92,16 +100,35 @@ public class WeaponDamage : MonoBehaviour
     {
         hitParts.Clear();
         damagedEnemies.Clear();
-        myCollider.enabled = true;
+        
+        if (myCollider != null) myCollider.enabled = true;
+        if (weaponTrail != null) weaponTrail.emitting = true;
+
+        if (swingSound != null)
+        {
+            // Use AudioManager if you have it (Recommended)
+            if (AudioManager.Instance != null)
+            {
+                // Play at the weapon's position
+                AudioManager.Instance.PlaySFX(swingSound, transform.position);
+            }
+            // Fallback if no AudioManager
+            else 
+            {
+                AudioSource.PlayClipAtPoint(swingSound, transform.position);
+            }
+        }
     }
 
     public void DisableHitbox()
     {
-        // Add this check!
-        // If the damageCollider variable is null, return immediately to prevent crash.
-        if (myCollider == null) return; 
+        if (myCollider != null) myCollider.enabled = false; 
 
-        myCollider.enabled = false; 
+        // --- NEW: Turn off the Trail ---
+        if (weaponTrail != null)
+        {
+            weaponTrail.emitting = false;
+        }
     }
     
     public void Initialize(WeaponData data)
@@ -110,6 +137,10 @@ public class WeaponDamage : MonoBehaviour
         if (data.hitSounds != null && data.hitSounds.Length > 0)
         {
             this.hitSounds = data.hitSounds;
+        }
+        if (data.swingSound != null)
+        {
+            this.swingSound = data.swingSound;
         }
     }
     
@@ -120,7 +151,10 @@ public class WeaponDamage : MonoBehaviour
             int index = Random.Range(0, hitSounds.Length);
             
             // AudioSource.PlayClipAtPoint creates a temporary object at that spot to play the sound
-            AudioSource.PlayClipAtPoint(hitSounds[index], position);
+            if (AudioManager.Instance != null)
+            {
+                AudioManager.Instance.PlaySFX(hitSounds[index], position);
+            }
         }
     }
 }

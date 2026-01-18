@@ -170,6 +170,9 @@ public class ShopSlot : MonoBehaviour
         }
 
         // 3. Play the sound (Requires Clip AND Position)
-        AudioSource.PlayClipAtPoint(clip, soundPosition);
+        if (AudioManager.Instance != null)
+        {
+            AudioManager.Instance.PlaySFX(clip, soundPosition);
+        }
     }
 }

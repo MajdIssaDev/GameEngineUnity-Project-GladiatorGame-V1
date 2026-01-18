@@ -66,8 +66,11 @@ public class EnemyCombat : MonoBehaviour
     {
         isAttacking = true;
         
-        agent.isStopped = true;     
-        agent.velocity = Vector3.zero;
+        if (agent != null && agent.isActiveAndEnabled && agent.isOnNavMesh)
+        {
+            agent.isStopped = true;     
+            agent.velocity = Vector3.zero;
+        }
 
         // Face Player
         if (playerTarget != null) 

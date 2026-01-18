@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.EventSystems;
 
 // 1. Add the Interface here
 public class PlayerCombat : MonoBehaviour, ICombatReceiver
@@ -61,6 +62,10 @@ public class PlayerCombat : MonoBehaviour, ICombatReceiver
     
     void Update()
     {
+        if (EventSystem.current != null && EventSystem.current.IsPointerOverGameObject())
+        {
+            return;
+        }
         // Failsafe
         if (isAttacking && Time.time > lastAttackTime + maxAttackDuration)
         {

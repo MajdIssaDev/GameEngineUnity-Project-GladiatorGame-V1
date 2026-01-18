@@ -11,7 +11,7 @@ public class EnemyLocomotion : MonoBehaviour
 
     [Header("Movement Settings")]
     [Tooltip("How close to get before stopping completely.")]
-    public float stopDistance = 2.0f;
+    public float stopDistance = 1.3f;
     [Tooltip("Distance at which the enemy switches from Running to Strafing.")]
     public float strafeDistance = 5.0f;
     [Tooltip("How fast the enemy turns to face the player while strafing.")]
@@ -42,6 +42,8 @@ public class EnemyLocomotion : MonoBehaviour
 
     void Update()
     {
+        CharacterController cc = GetComponent<CharacterController>();
+        if (cc != null && cc.enabled == false) return;
         if (playerTarget == null) return;
 
         // 1. Update Navigation Destination

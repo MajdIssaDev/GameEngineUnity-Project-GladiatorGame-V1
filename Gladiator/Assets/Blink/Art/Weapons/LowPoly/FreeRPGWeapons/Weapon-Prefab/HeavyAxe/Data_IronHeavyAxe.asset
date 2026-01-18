@@ -19,3 +19,4 @@ MonoBehaviour:
   animatorOverride: {fileID: 22100000, guid: 98c68f7f122c3a54e93631b1764565ed, type: 2}
   hitSounds:
   - {fileID: 8300000, guid: 4fcb1e298ab7c5a42b8c415d200c9ea2, type: 3}
+  swingSound: {fileID: 8300000, guid: 87169644b629aa742a9e3ca334768934, type: 3}

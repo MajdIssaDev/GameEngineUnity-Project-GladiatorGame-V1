@@ -146,7 +146,10 @@ public class StatUpgradeSlot : MonoBehaviour
         Vector3 pos = transform.position;
         if (Camera.main != null) pos = Camera.main.transform.position;
         
-        AudioSource.PlayClipAtPoint(clip, pos);
+        if (AudioManager.Instance != null)
+        {
+            AudioManager.Instance.PlaySFX(clip, pos);
+        }
     }
 
     int CalculateUpgradeCount(float val)

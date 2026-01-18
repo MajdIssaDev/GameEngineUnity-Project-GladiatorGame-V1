@@ -64,6 +64,7 @@ public class EnemyAI : MonoBehaviour
 
     void Update()
     {
+        if (agent == null || !agent.isActiveAndEnabled || !agent.isOnNavMesh) return;
         if (playerTarget == null) return;
 
         // 1. LOG ATTACK STATE CHANGES
@@ -80,8 +81,13 @@ public class EnemyAI : MonoBehaviour
         // 2. FREEZE IF ATTACKING
         if (combatScript.isAttacking)
         {
-            agent.isStopped = true;
-            agent.velocity = Vector3.zero;
+            // FIX: Only try to stop the agent if it's actually alive and on the NavMesh
+            if (agent.isActiveAndEnabled && agent.isOnNavMesh)
+            {
+                agent.isStopped = true;
+                agent.velocity = Vector3.zero;
+            }
+        
             anim.SetFloat(animSpeedID, 0); 
             return; 
         }
