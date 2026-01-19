@@ -22,6 +22,7 @@ public class EnemyAI : MonoBehaviour
     [Header("Dodge / Reposition Logic")]
     public Vector2 waitInterval = new Vector2(2.0f, 5.0f); 
     public Vector2 moveDuration = new Vector2(0.5f, 1.2f); 
+    [Range(0,100)] public float dodgeChance = 30f; 
 
     // Internal State
     private NavMeshAgent agent;
@@ -32,7 +33,9 @@ public class EnemyAI : MonoBehaviour
     private float currentStrafeDir = 0f; 
     private bool inStrafeRange = false;
     
-    // Debug helper to prevent spamming logs
+    public bool isDodging { get; private set; } = false;
+
+    // Track previous frame to detect when attack STARTS or ENDS
     private bool lastAttackState = false;
 
     // Animator Hashes
@@ -40,6 +43,7 @@ public class EnemyAI : MonoBehaviour
     private int animIsStrafingID;
     private int animInputXID;
     private int animInputYID;
+    private int animDodgeTriggerID; 
 
     void Start()
     {
@@ -57,6 +61,7 @@ public class EnemyAI : MonoBehaviour
         animIsStrafingID = Animator.StringToHash("isStrafing");
         animInputXID = Animator.StringToHash("InputX");
         animInputYID = Animator.StringToHash("InputY");
+        animDodgeTriggerID = Animator.StringToHash("Dodge"); 
 
         agent.avoidancePriority = Random.Range(30, 70);
         actionTimer = Random.Range(waitInterval.x, waitInterval.y);
@@ -64,32 +69,61 @@ public class EnemyAI : MonoBehaviour
 
     void Update()
     {
-        if (agent == null || !agent.isActiveAndEnabled || !agent.isOnNavMesh) return;
+        if (agent == null || !agent.isActiveAndEnabled) return;
         if (playerTarget == null) return;
 
-        // 1. LOG ATTACK STATE CHANGES
+        // 1. IF DODGING, DO NOTHING (Root Motion handles movement)
+        if (isDodging) return;
+
+        // ================================================================
+        //            STATE CHANGE DETECTOR (Reset Position on Finish)
+        // ================================================================
         if (combatScript.isAttacking != lastAttackState)
         {
-            if (combatScript.isAttacking) 
-                Debug.Log($"<color=red>[{gameObject.name}] Started ATTACK Animation</color>");
-            else 
-                Debug.Log($"<color=green>[{gameObject.name}] Finished ATTACK. Resuming Movement.</color>");
-            
             lastAttackState = combatScript.isAttacking;
+
+            // IF ATTACK JUST FINISHED (Switched from True to False)
+            if (!combatScript.isAttacking)
+            {
+                // 1. Turn off Root Motion (Cleanup)
+                anim.applyRootMotion = false;
+
+                // 2. Snap Agent to the new position
+                // (The animation moved the Transform, we must tell the Agent "We are here now")
+                agent.nextPosition = transform.position;
+
+                // 3. Re-enable Agent Control
+                agent.updatePosition = true;
+                agent.updateRotation = true;
+                agent.isStopped = false; 
+
+                // Debug.Log($"<color=green>[{gameObject.name}] Attack Finished. Resetting Position.</color>");
+            }
         }
 
-        // 2. FREEZE IF ATTACKING
+        // ================================================================
+        //                       ATTACK BEHAVIOR
+        // ================================================================
         if (combatScript.isAttacking)
         {
-            // FIX: Only try to stop the agent if it's actually alive and on the NavMesh
-            if (agent.isActiveAndEnabled && agent.isOnNavMesh)
+            // --- CHANGE: ALWAYS ENABLE ROOT MOTION FOR ANY ATTACK ---
+            
+            // 1. Enable Root Motion so the animation moves the enemy
+            anim.applyRootMotion = true;
+
+            // 2. Disable Agent updates so it doesn't fight the animation
+            agent.updatePosition = false; 
+            agent.updateRotation = false;
+            
+            // 3. Stop the internal pathfinding velocity
+            if (agent.isOnNavMesh) 
             {
                 agent.isStopped = true;
                 agent.velocity = Vector3.zero;
             }
-        
+
             anim.SetFloat(animSpeedID, 0); 
-            return; 
+            return; // Stop here, don't run movement logic
         }
 
         distanceToPlayer = Vector3.Distance(transform.position, playerTarget.position);
@@ -114,15 +148,16 @@ public class EnemyAI : MonoBehaviour
         else
             HandleChasing();
 
-        // 5. ANIMATION VELOCITY FIX
+        // 5. ANIMATION VELOCITY
         float currentSpeed = agent.velocity.magnitude;
         if (agent.hasPath && agent.remainingDistance > agent.stoppingDistance)
         {
              if (currentSpeed < 0.1f) currentSpeed = agent.speed; 
         }
-
         anim.SetFloat(animSpeedID, currentSpeed, 0.1f, Time.deltaTime);
     }
+
+    // ... (Rest of the script remains exactly the same) ...
 
     void HandleChasing()
     {
@@ -131,7 +166,6 @@ public class EnemyAI : MonoBehaviour
         agent.updateRotation = true; 
         agent.stoppingDistance = combatScript.attackRange - 0.2f; 
         agent.SetDestination(playerTarget.position);
-
         isRepositioning = false; 
         anim.SetBool(animIsStrafingID, false);
     }
@@ -153,12 +187,37 @@ public class EnemyAI : MonoBehaviour
         {
             agent.isStopped = true; 
             agent.velocity = Vector3.zero;
-
             anim.SetFloat(animInputXID, 0f, 0.2f, Time.deltaTime);
             anim.SetFloat(animInputYID, 0f);
 
-            if (actionTimer <= 0) StartRepositioning();
+            if (actionTimer <= 0) 
+            {
+                float rollDice = Random.Range(0f, 100f);
+                if (rollDice < dodgeChance) PerformDodge();
+                else StartRepositioning();
+            }
         }
+    }
+
+    public void PerformDodge()
+    {
+        if (isDodging) return;
+        isDodging = true;
+        anim.applyRootMotion = true;
+        anim.SetTrigger(animDodgeTriggerID);
+        agent.updatePosition = false; 
+        agent.updateRotation = false;
+        agent.isStopped = true;
+    }
+
+    public void OnDodgeFinished()
+    {
+        isDodging = false;
+        anim.applyRootMotion = false;
+        agent.nextPosition = transform.position; 
+        agent.updatePosition = true; 
+        agent.updateRotation = true;
+        actionTimer = Random.Range(waitInterval.x, waitInterval.y);
     }
 
     void StartRepositioning()
@@ -166,22 +225,14 @@ public class EnemyAI : MonoBehaviour
         isRepositioning = true;
         agent.isStopped = false;
         agent.speed = strafeSpeed;
-        
         currentStrafeDir = Random.Range(0, 2) == 0 ? -1f : 1f;
         actionTimer = Random.Range(moveDuration.x, moveDuration.y);
-
-        // LOG STRAFE DIRECTION
-        string dirName = currentStrafeDir == -1f ? "LEFT" : "RIGHT";
-        Debug.Log($"<color=cyan>[{gameObject.name}] Strafing {dirName} (InputX: {currentStrafeDir})</color>");
     }
 
     void StopRepositioning()
     {
         isRepositioning = false;
         actionTimer = Random.Range(waitInterval.x, waitInterval.y);
-        
-        // LOG IDLE
-        Debug.Log($"<color=cyan>[{gameObject.name}] Strafe IDLE (Waiting {actionTimer:F1}s)</color>");
     }
 
     void MoveToSide()
@@ -189,7 +240,6 @@ public class EnemyAI : MonoBehaviour
         Vector3 offset = transform.right * currentStrafeDir * 2f;
         Vector3 dest = playerTarget.position + offset;
         agent.SetDestination(dest);
-        
         anim.SetFloat(animInputXID, currentStrafeDir, 0.1f, Time.deltaTime);
     }
 
@@ -203,12 +253,9 @@ public class EnemyAI : MonoBehaviour
             transform.rotation = Quaternion.Slerp(transform.rotation, lookRotation, Time.deltaTime * 5f);
         }
     }
-    
+
     void EnterStrafeMode()
     {
-        // LOG MODE CHANGE
-        Debug.Log($"<color=yellow>[{gameObject.name}] Switched to STRAFE Mode (Blend Tree ON)</color>");
-
         agent.isStopped = true;
         agent.updateRotation = false;
         anim.SetBool(animIsStrafingID, true);
@@ -218,9 +265,6 @@ public class EnemyAI : MonoBehaviour
 
     void ExitStrafeMode()
     {
-        // LOG MODE CHANGE
-        Debug.Log($"<color=yellow>[{gameObject.name}] Switched to CHASE Mode (Blend Tree OFF)</color>");
-
         anim.SetBool(animIsStrafingID, false);
         agent.updateRotation = true;
         isRepositioning = false;

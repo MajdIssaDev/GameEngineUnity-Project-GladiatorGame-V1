@@ -1,0 +1,22 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6a7c0edfb95ad0b4bb8dd470b4759412, type: 3}
+  m_Name: Data_IronHeavyAxe
+  m_EditorClassIdentifier: 
+  weaponName: Iron Heavy Axe
+  price: 150
+  tier: 1
+  weaponPrefab: {fileID: 3984786163006170402, guid: ffd9d7576105cd64e8be7a525f75db45, type: 3}
+  animatorOverride: {fileID: 22100000, guid: 98c68f7f122c3a54e93631b1764565ed, type: 2}
+  hitSounds:
+  - {fileID: 8300000, guid: 4fcb1e298ab7c5a42b8c415d200c9ea2, type: 3}
+  swingSound: {fileID: 8300000, guid: 87169644b629aa742a9e3ca334768934, type: 3}

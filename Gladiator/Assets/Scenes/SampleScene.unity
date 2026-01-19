@@ -9320,7 +9320,7 @@ AudioSource:
   serializedVersion: 4
   OutputAudioMixerGroup: {fileID: 0}
   m_audioClip: {fileID: 0}
-  m_Resource: {fileID: 8300000, guid: 65a89395e8c8e024baeedc93141c892b, type: 3}
+  m_Resource: {fileID: 8300000, guid: 049a1928ea443844694701f73c8d1803, type: 3}
   m_PlayOnAwake: 1
   m_Volume: 0.3
   m_Pitch: 1
@@ -46329,8 +46329,12 @@ MonoBehaviour:
   playerSpawnPoint: {fileID: 1606165484}
   normalEnemyTable:
   - {fileID: 1996938711032157966, guid: a7008b00f45cd974fb066eeca8e285d3, type: 3}
+  - {fileID: 7430301835723733781, guid: d032b5097b2079a4291681c85ad1b40d, type: 3}
+  - {fileID: 2862355040179291393, guid: c123ea2bb1d999b4396354d11892472a, type: 3}
   bossEnemyTable:
-  - {fileID: 1996938711032157966, guid: a7008b00f45cd974fb066eeca8e285d3, type: 3}
+  - {fileID: 5558442444894910484, guid: 0532a20dff748f046bedc92d9b924b89, type: 3}
+  - {fileID: 8082282496380866941, guid: de8ddc9b110769346b38621af5f28830, type: 3}
+  - {fileID: 2673979265734374390, guid: b13ef2a9723183e4fa600c5d0eebf5e9, type: 3}
   enemySpawnPoints:
   - {fileID: 919095662}
   - {fileID: 1273465289}

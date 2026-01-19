@@ -17,7 +17,8 @@ public class HealthScript : MonoBehaviour
     [SerializeField] private EnemyHealthBar enemyFloatingBar;
 
     public bool isInvincible = false;
-    private bool isDead = false; // Prevent dying twice
+    public bool IsDead = false; // Prevent dying twice
+    
 
     // --- NEW REFERENCES ---
     private Animator animator;
@@ -37,7 +38,7 @@ public class HealthScript : MonoBehaviour
     void FixedUpdate()
     {
         // Add !isDead check so corpses don't regenerate health
-        if (!isDead && currentHealth > 0 && currentHealth < maxHealth)
+        if (!IsDead && currentHealth > 0 && currentHealth < maxHealth)
         {
             currentHealth += stats.regenSpeed / 50;
             if (currentHealth > maxHealth) currentHealth = maxHealth;
@@ -47,7 +48,7 @@ public class HealthScript : MonoBehaviour
 
     public void takeDamage(float damageAmount)
     {
-        if (isDead || isInvincible) return; // Don't hit dead things
+        if (IsDead || isInvincible) return; // Don't hit dead things
 
         float damage = damageAmount * (100 / (100 + stats.defence));
         currentHealth -= damage;
@@ -76,8 +77,8 @@ public class HealthScript : MonoBehaviour
 
     private void Die()
     {
-        if (isDead) return;
-        isDead = true;
+        if (IsDead) return;
+        IsDead = true;
 
         // 1. Play Animation
         if (animator != null)

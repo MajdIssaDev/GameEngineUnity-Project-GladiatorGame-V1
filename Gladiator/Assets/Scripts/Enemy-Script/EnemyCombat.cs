@@ -34,6 +34,9 @@ public class EnemyCombat : MonoBehaviour
     private float lastDodgeTime;
     
     public bool isAttacking { get; private set; }
+    
+    // --- NEW: Public flag for the AI to read ---
+    public bool isHeavyAttacking { get; private set; } 
 
     void Start()
     {
@@ -41,7 +44,9 @@ public class EnemyCombat : MonoBehaviour
         aiScript = GetComponent<EnemyAI>();
         if (aiScript.playerTarget != null) playerTarget = aiScript.playerTarget;
         if (statsScript == null) statsScript = GetComponent<Stats>();
+        
         isAttacking = false;
+        isHeavyAttacking = false;
     }
 
     public void SetWeapon(WeaponDamage newWeapon)
@@ -90,11 +95,13 @@ public class EnemyCombat : MonoBehaviour
         // Set Speed
         float baseSpeed = (statsScript != null) ? statsScript.attackSpeed : 1.0f;
 
-        // Decide Attack Type
-        bool isHeavy = Random.value < heavyAttackChance;
-        if (currentWeaponDamage != null) currentWeaponDamage.isHeavyAttack = isHeavy;
+        // --- NEW: Decide Attack Type & Set Flag ---
+        isHeavyAttacking = Random.value < heavyAttackChance;
+        
+        if (currentWeaponDamage != null) 
+            currentWeaponDamage.isHeavyAttack = isHeavyAttacking;
 
-        if (isHeavy)
+        if (isHeavyAttacking)
         {
             // Heavy Logic
             float heavySpeed = (baseSpeed / 2.0f) + 0.5f;
@@ -105,11 +112,7 @@ public class EnemyCombat : MonoBehaviour
         {
             // Light Logic
             animator.SetFloat("AttackSpeedMultiplier", baseSpeed);
-            if (currentWeaponDamage != null) currentWeaponDamage.isHeavyAttack = false;
             animator.SetTrigger("Attack");
-            
-            // [CHANGE] We do NOT wait for combo here anymore. 
-            // We wait for the Animation Event "OpenComboWindow" to trigger it.
         }
 
         // Failsafe timer (waits for "FinishAttack" event)
@@ -127,19 +130,13 @@ public class EnemyCombat : MonoBehaviour
 
     public void OpenComboWindow()
     {
-        // This function is called by the Event at the end of the animation (recovery phase)
-        
         // 1. Roll the dice
         bool shouldCombo = Random.value < comboChance;
 
         // 2. Only combo if we are NOT doing a heavy attack
-        bool isHeavy = animator.GetCurrentAnimatorStateInfo(0).IsName("Heavy Attack"); 
-
-        if (shouldCombo && !isHeavy)
+        // (Double check the flag we just set)
+        if (shouldCombo && !isHeavyAttacking)
         {
-            // This trigger will interrupt the current animation and start the combo
-            // Because we transition early, the "FinishAttack" event of the FIRST animation is skipped.
-            // The logic will wait for the "FinishAttack" of the SECOND animation (the combo).
             animator.SetTrigger("AttackCombo");
         }
     }
@@ -158,6 +155,8 @@ public class EnemyCombat : MonoBehaviour
     {
         // This runs when the LAST animation in the chain finishes
         isAttacking = false;
+        isHeavyAttacking = false; // --- NEW: Reset flag ---
+        
         lastAttackTime = Time.time;
         CloseDamageWindow();
     }
