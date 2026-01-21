@@ -45,6 +45,7 @@ public class GameManager : MonoBehaviour
     private bool isPaused = false;
     
     [Header("UI Text")]
+    public TextMeshProUGUI moneyTextShop;
     public TextMeshProUGUI moneyText; 
     public TextMeshProUGUI roundText;
     
@@ -75,7 +76,11 @@ public class GameManager : MonoBehaviour
 
     private void Update()
     {
-        if (moneyText != null) moneyText.text = "Gold: " + money;
+        // 1. Update HUD Money (Existing)
+        if (moneyText != null) moneyText.text = "Gold: \n" + money;
+        
+        // 2. NEW: Update Shop Money (Always shows current gold)
+        if (moneyTextShop != null) moneyTextShop.text = "Gold: \n" + money;
         
         if (Input.GetKeyDown(KeyCode.Escape) && !loseMenuPanel.activeSelf)
         {
