@@ -33,9 +33,11 @@ public class EnemyCombat : MonoBehaviour
     private float lastAttackTime;
     private float lastDodgeTime;
     
-    public bool isAttacking { get; private set; }
+    // Status Effects
+    public bool isStunned { get; private set; } = false;
+    private Coroutine currentSlowRoutine;
     
-    // --- NEW: Public flag for the AI to read ---
+    public bool isAttacking { get; private set; }
     public bool isHeavyAttacking { get; private set; } 
 
     void Start()
@@ -43,6 +45,8 @@ public class EnemyCombat : MonoBehaviour
         agent = GetComponent<NavMeshAgent>();
         aiScript = GetComponent<EnemyAI>();
         if (aiScript.playerTarget != null) playerTarget = aiScript.playerTarget;
+        
+        // Ensure we grab Stats if not assigned
         if (statsScript == null) statsScript = GetComponent<Stats>();
         
         isAttacking = false;
@@ -56,6 +60,8 @@ public class EnemyCombat : MonoBehaviour
 
     public bool CanAttack(float distanceToPlayer)
     {
+        if (isStunned) return false; // NEW: Cannot attack while stunned
+        
         if (distanceToPlayer > attackRange) return false;
         if (isAttacking) return false;
         if (Time.time < lastAttackTime + attackCooldown) return false;
@@ -65,6 +71,51 @@ public class EnemyCombat : MonoBehaviour
     public void StartAttack()
     {
         if (!isAttacking) StartCoroutine(PerformAttackSequence());
+    }
+    
+    
+    IEnumerator StunRoutine(float duration)
+    {
+        isStunned = true;
+        
+        // 1. Play Animation
+        animator.SetTrigger("Stun"); // Needs a Trigger named "Stun"
+        // animator.SetBool("Stunned", true); // Optional looped state
+
+        // 2. Stop Moving
+        if (agent != null && agent.isActiveAndEnabled) agent.isStopped = true;
+        
+        // 3. Apply 50% Slow via Stats
+        if (statsScript != null) statsScript.ApplySlowEffect(0.5f);
+
+        yield return new WaitForSeconds(duration);
+
+        // 4. Reset
+        if (statsScript != null) statsScript.RemoveSlowEffect();
+        if (agent != null && agent.isActiveAndEnabled) agent.isStopped = false;
+        isStunned = false;
+    }
+    
+    // --- NEW: SLOW LOGIC (Block Punishment) ---
+    public void ApplyBlockSlow(float duration)
+    {
+        if (isStunned) return;
+        animator.SetTrigger("Stun");
+        
+        if (currentSlowRoutine != null) StopCoroutine(currentSlowRoutine);
+        currentSlowRoutine = StartCoroutine(BlockSlowRoutine(duration));
+    }
+    
+    IEnumerator BlockSlowRoutine(float duration)
+    {
+        // Apply 30% Slow
+        if (statsScript != null) statsScript.ApplySlowEffect(0.3f);
+
+        yield return new WaitForSeconds(duration);
+
+        // Reset
+        if (statsScript != null) statsScript.RemoveSlowEffect();
+        currentSlowRoutine = null;
     }
 
     IEnumerator PerformAttackSequence()
@@ -92,10 +143,9 @@ public class EnemyCombat : MonoBehaviour
         animator.ResetTrigger("HeavyAttack");
         animator.ResetTrigger("AttackCombo");
 
-        // Set Speed
+        // Set Speed (Now automatically includes Slow Effects from Stats)
         float baseSpeed = (statsScript != null) ? statsScript.attackSpeed : 1.0f;
 
-        // --- NEW: Decide Attack Type & Set Flag ---
         isHeavyAttacking = Random.value < heavyAttackChance;
         
         if (currentWeaponDamage != null) 
@@ -115,7 +165,6 @@ public class EnemyCombat : MonoBehaviour
             animator.SetTrigger("Attack");
         }
 
-        // Failsafe timer (waits for "FinishAttack" event)
         float safetyTimer = 4.0f; 
         while (isAttacking && safetyTimer > 0)
         {
@@ -130,11 +179,8 @@ public class EnemyCombat : MonoBehaviour
 
     public void OpenComboWindow()
     {
-        // 1. Roll the dice
         bool shouldCombo = Random.value < comboChance;
 
-        // 2. Only combo if we are NOT doing a heavy attack
-        // (Double check the flag we just set)
         if (shouldCombo && !isHeavyAttacking)
         {
             animator.SetTrigger("AttackCombo");
@@ -153,9 +199,8 @@ public class EnemyCombat : MonoBehaviour
     
     public void FinishAttack()
     {
-        // This runs when the LAST animation in the chain finishes
         isAttacking = false;
-        isHeavyAttacking = false; // --- NEW: Reset flag ---
+        isHeavyAttacking = false; 
         
         lastAttackTime = Time.time;
         CloseDamageWindow();
@@ -163,7 +208,7 @@ public class EnemyCombat : MonoBehaviour
 
     public void ReactToIncomingAttack()
     {
-        if (Time.time < lastDodgeTime + dodgeCooldown || isAttacking) return;
+        if (Time.time < lastDodgeTime + dodgeCooldown || isAttacking || isStunned) return;
 
         int level = statsScript != null ? statsScript.GetLevel() : 1;
         float currentDodgeChance = Mathf.Clamp(level * 5.0f, 0, maxDodgeChance);
@@ -174,5 +219,35 @@ public class EnemyCombat : MonoBehaviour
             lastDodgeTime = Time.time;
             lastAttackTime = Time.time + 1.0f; 
         }
+    }
+    
+
+    public void TriggerStunReaction()
+    {
+        animator.SetTrigger("Stun");
+        
+        // Disable Hitbox immediately so they don't damage you while stunned
+        if (currentWeaponDamage != null) currentWeaponDamage.DisableHitbox();
+        
+        // Reset flags
+        isAttacking = false;
+        isHeavyAttacking = false;
+        
+        // Apply Stun
+        ApplyStun(5); // Or 0.5f, whatever feels right
+    }
+    
+    // 2. SAFETY RESET (Fixes "Frozen Forever" bug)
+    private void OnEnable()
+    {
+        isStunned = false; 
+        isAttacking = false;
+        // Reset other states if needed
+    }
+
+    public void ApplyStun(float duration)
+    {
+        if (isStunned) return;
+        StartCoroutine(StunRoutine(duration));
     }
 }

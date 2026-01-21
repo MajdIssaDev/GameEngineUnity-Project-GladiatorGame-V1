@@ -6,155 +6,197 @@ public class WeaponDamage : MonoBehaviour
     [Header("References")]
     public PlayerCombat playerCombat;
     [SerializeField] Stats ownerStats;
+    public GameObject characterHolder; 
     
     [Header("Settings")]
     public float damageAmount = 20;
     public float knockbackStrength = 5f;
     [HideInInspector] public bool isHeavyAttack = false;
 
-    private Collider myCollider;
-    
-    // Track Hitboxes (Bones) separately from Enemies (Health)
-    private List<Collider> hitParts = new List<Collider>(); 
-    private List<GameObject> damagedEnemies = new List<GameObject>(); 
-    
     [Header("Audio")]
-    public AudioClip[] hitSounds;
-    private AudioClip swingSound;
+    public AudioClip[] hitSounds; 
+    public AudioClip swingSound;
+    public AudioClip blockSound;  
+    public AudioClip parrySound;  
 
     [Header("Visuals")]
     public TrailRenderer weaponTrail;
     
+    private Collider myCollider;
+    private List<Collider> hitParts = new List<Collider>(); 
+    private List<GameObject> damagedEnemies = new List<GameObject>(); 
+
     private void Start()
     {
         myCollider = GetComponent<BoxCollider>();
-        myCollider.enabled = false;
+        if (myCollider != null) myCollider.enabled = false;
+
         if (ownerStats == null) ownerStats = GetComponentInParent<Stats>();
         if (playerCombat == null) playerCombat = GetComponentInParent<PlayerCombat>();
+        
+        if (characterHolder == null)
+        {
+            if (ownerStats != null) characterHolder = ownerStats.gameObject;
+            else characterHolder = transform.root.gameObject;
+        }
+
         if (weaponTrail != null)
         {
-            weaponTrail.emitting = false; // Ensure it's off
-            weaponTrail.Clear();          // Delete any lines created during Spawn/Teleport
+            weaponTrail.emitting = false; 
+            weaponTrail.Clear();          
         }
     }
 
     private void OnTriggerEnter(Collider other)
     {
-        // Ignore self
-        if (other.transform.root == transform.root) return;
-        if (transform.root.CompareTag(other.transform.root.tag)) return; //so enemies dont damage enemies
+        // 1. Safety Checks
+        if (characterHolder != null)
+        {
+            if (other.gameObject == characterHolder) return;
+            if (other.transform.root == characterHolder.transform) return;
+        }
+        else if (other.transform.root == transform.root) return;
 
-        // --- FIX START: Define a safe hit point to use everywhere ---
-        // We use the weapon's current position as the impact point.
-        // This avoids the "Convex MeshCollider" error entirely.
+        if (transform.root.CompareTag(other.transform.root.tag)) return; 
+
         Vector3 safeHitPoint = transform.position;
-        // --------------------------------------------------------
 
-        // --- 1. TRACK PARTS (Visuals) ---
-        // If we already hit THIS specific arm collider, skip it.
+        // Prevent hitting the exact same bone twice
         if (hitParts.Contains(other)) return;
         hitParts.Add(other);
-
-        HitReaction reaction = other.GetComponentInParent<HitReaction>();
         
-        if (reaction != null)
+        // --- NEW: Check if we already hit this Enemy Root ---
+        GameObject enemyRoot = other.transform.root.gameObject;
+        bool isFirstHitOnEnemy = !damagedEnemies.Contains(enemyRoot);
+        // ---------------------------------------------------
+
+        // 2. Determine Outcome
+        HealthScript health = other.GetComponentInParent<HealthScript>();
+        HitReaction reaction = other.GetComponentInParent<HitReaction>();
+        DefenseType defense = DefenseType.None;
+
+        if (health != null)
         {
-            // Pass the safeHitPoint instead of calculating ClosestPoint
-            reaction.HandleHit(other, safeHitPoint, transform.forward);
+            Vector3 attackerPos = (characterHolder != null) ? characterHolder.transform.position : transform.position;
+            defense = health.CheckDefense(attackerPos);
         }
 
-        // --- 2. TRACK DAMAGE (Health) ---
-        GameObject enemyRoot = other.transform.root.gameObject;
-        
-        // Only damage the enemy if we haven't damaged this specific enemy instance yet
-        if (!damagedEnemies.Contains(enemyRoot))
+        // 3. Handle Visuals & SOUNDS
+        if (reaction != null)
         {
-            damagedEnemies.Add(enemyRoot);
+            switch (defense)
+            {
+                case DefenseType.Parry:
+                    reaction.PlayParryVFX(safeHitPoint, transform.forward);
+                    // Only play sound if this is the first interaction with this enemy
+                    if (isFirstHitOnEnemy) PlaySoundEffect(parrySound, safeHitPoint); 
+                    break;
+
+                case DefenseType.Block:
+                    reaction.PlayBlockVFX(safeHitPoint, transform.forward);
+                    if (isFirstHitOnEnemy) PlaySoundEffect(blockSound, safeHitPoint);
+                    break;
+
+                case DefenseType.None:
+                    reaction.HandleHit(other, safeHitPoint, transform.forward);
+                    if (isFirstHitOnEnemy) PlayRandomHitSound(safeHitPoint);
+                    break;
+            }
+        }
+        else 
+        {
+            // Fallback for objects without HitReaction
+            if (isFirstHitOnEnemy) PlayRandomHitSound(safeHitPoint);
+        }
+
+        // 4. Apply Damage Logic
+        if (isFirstHitOnEnemy)
+        {
+            damagedEnemies.Add(enemyRoot); // Mark enemy as processed
             
-            // Apply Damage
-            HealthScript health = other.GetComponentInParent<HealthScript>();
             if (health != null)
             {
                 if (health.isInvincible) return;
                 
-                float finalDamage = isHeavyAttack ? damageAmount * 1.5f : damageAmount;
-                if (ownerStats != null) finalDamage += ownerStats.strength;
-                health.takeDamage(finalDamage);
+                // 1. Calculate Base Damage (Light vs Heavy)
+                float baseDamage = isHeavyAttack ? damageAmount * 1.5f : damageAmount;
                 
-                // Use the safeHitPoint for sound as well
-                PlayHitSound(safeHitPoint);
+                // 2. Apply Strength Multiplier
+                // Formula: 1 Point = +10% Damage. 
+                // Example: Strength 5 = 50% boost -> Multiplier 1.5x
+                float finalDamage = baseDamage;
+                
+                if (ownerStats != null) 
+                {
+                    float strengthMod = 1.0f + (ownerStats.strength * 0.10f);
+                    finalDamage *= strengthMod;
+                }
+                
+                // 3. Deal the Damage
+                GameObject attackerRef = (characterHolder != null) ? characterHolder : transform.root.gameObject;
+                health.takeDamage(finalDamage, attackerRef); 
             }
 
-            // Apply Knockback
-            ImpactReceiver enemyImpact = other.GetComponentInParent<ImpactReceiver>();
-            if (enemyImpact != null)
+            // Apply Knockback only on non-defense hits
+            if (defense == DefenseType.None)
             {
-                Vector3 pushDir = (other.transform.position - transform.position).normalized;
-                pushDir.y = 0;
-                enemyImpact.AddImpact(pushDir, knockbackStrength);
+                ImpactReceiver enemyImpact = other.GetComponentInParent<ImpactReceiver>();
+                if (enemyImpact != null)
+                {
+                    Vector3 pushDir = (other.transform.position - transform.position).normalized;
+                    pushDir.y = 0;
+                    enemyImpact.AddImpact(pushDir, knockbackStrength);
+                }
             }
+        }
+    }
+
+    // --- HELPERS ---
+
+    void PlaySoundEffect(AudioClip clip, Vector3 position)
+    {
+        if (clip == null) return;
+
+        if (AudioManager.Instance != null)
+        {
+            AudioManager.Instance.PlaySFX(clip, position);
+        }
+        else 
+        {
+            AudioSource.PlayClipAtPoint(clip, position);
+        }
+    }
+
+    void PlayRandomHitSound(Vector3 position)
+    {
+        if (hitSounds != null && hitSounds.Length > 0)
+        {
+            int index = Random.Range(0, hitSounds.Length);
+            PlaySoundEffect(hitSounds[index], position);
         }
     }
 
     public void EnableHitbox() 
     {
         hitParts.Clear();
-        damagedEnemies.Clear();
+        damagedEnemies.Clear(); // Reset the list so we can hit them again next swing
         
         if (myCollider != null) myCollider.enabled = true;
         if (weaponTrail != null) weaponTrail.emitting = true;
-
-        if (swingSound != null)
-        {
-            // Use AudioManager if you have it (Recommended)
-            if (AudioManager.Instance != null)
-            {
-                // Play at the weapon's position
-                AudioManager.Instance.PlaySFX(swingSound, transform.position);
-            }
-            // Fallback if no AudioManager
-            else 
-            {
-                AudioSource.PlayClipAtPoint(swingSound, transform.position);
-            }
-        }
+        PlaySoundEffect(swingSound, transform.position); 
     }
 
     public void DisableHitbox()
     {
         if (myCollider != null) myCollider.enabled = false; 
-
-        // --- NEW: Turn off the Trail ---
-        if (weaponTrail != null)
-        {
-            weaponTrail.emitting = false;
-        }
+        if (weaponTrail != null) weaponTrail.emitting = false;
     }
     
     public void Initialize(WeaponData data)
     {
-        // If the specific weapon has sounds, use them.
-        if (data.hitSounds != null && data.hitSounds.Length > 0)
-        {
-            this.hitSounds = data.hitSounds;
-        }
-        if (data.swingSound != null)
-        {
-            this.swingSound = data.swingSound;
-        }
-    }
-    
-    void PlayHitSound(Vector3 position)
-    {
-        if (hitSounds.Length > 0)
-        {
-            int index = Random.Range(0, hitSounds.Length);
-            
-            // AudioSource.PlayClipAtPoint creates a temporary object at that spot to play the sound
-            if (AudioManager.Instance != null)
-            {
-                AudioManager.Instance.PlaySFX(hitSounds[index], position);
-            }
-        }
+        if (data.hitSounds != null && data.hitSounds.Length > 0) this.hitSounds = data.hitSounds;
+        if (data.swingSound != null) this.swingSound = data.swingSound;
+        if (data.blockSound != null) this.blockSound = data.blockSound;
+        if (data.parrySound != null) this.parrySound = data.parrySound;
     }
 }

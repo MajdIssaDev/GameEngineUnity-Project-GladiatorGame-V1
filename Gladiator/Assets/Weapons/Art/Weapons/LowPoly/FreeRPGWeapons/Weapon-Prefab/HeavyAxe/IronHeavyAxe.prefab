@@ -167,7 +167,7 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: -8679921383154817045, guid: 775c96f25b29a464c96e04f3e961ff06, type: 3}
       propertyPath: m_LocalPosition.x
-      value: 16.561316
+      value: 8.383728
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 775c96f25b29a464c96e04f3e961ff06, type: 3}
       propertyPath: m_LocalPosition.y
@@ -175,7 +175,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 775c96f25b29a464c96e04f3e961ff06, type: 3}
       propertyPath: m_LocalPosition.z
-      value: -2.2688665
+      value: -6.8753037
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 775c96f25b29a464c96e04f3e961ff06, type: 3}
       propertyPath: m_LocalRotation.w
@@ -305,10 +305,14 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   playerCombat: {fileID: 0}
   ownerStats: {fileID: 0}
+  characterHolder: {fileID: 0}
   damageAmount: 30
   knockbackStrength: 10
   isHeavyAttack: 0
   hitSounds: []
+  swingSound: {fileID: 0}
+  blockSound: {fileID: 0}
+  parrySound: {fileID: 0}
   weaponTrail: {fileID: 3649237831270423773}
 --- !u!4 &4325458178250620824 stripped
 Transform:

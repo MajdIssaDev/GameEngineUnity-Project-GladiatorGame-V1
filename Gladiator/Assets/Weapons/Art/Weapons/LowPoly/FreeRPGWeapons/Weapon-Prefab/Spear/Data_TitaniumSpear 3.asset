@@ -1,0 +1,24 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6a7c0edfb95ad0b4bb8dd470b4759412, type: 3}
+  m_Name: Data_TitaniumSpear 3
+  m_EditorClassIdentifier: 
+  weaponName: Titanium Spear
+  price: 750
+  tier: 4
+  weaponPrefab: {fileID: 9223142540885581066, guid: e712996f2fd033042a111c6f78328ce1, type: 3}
+  animatorOverride: {fileID: 22100000, guid: 78c1ab1bef51b344e8a95b428285da04, type: 2}
+  hitSounds:
+  - {fileID: 8300000, guid: 4fcb1e298ab7c5a42b8c415d200c9ea2, type: 3}
+  swingSound: {fileID: 8300000, guid: 52438a8d0624b62448be4931c0cd2ef8, type: 3}
+  blockSound: {fileID: 8300000, guid: 57960ee1d6939c4498b6a7af079b650e, type: 3}
+  parrySound: {fileID: 8300000, guid: d43fe69a4c6751c458c97856a88310e2, type: 3}

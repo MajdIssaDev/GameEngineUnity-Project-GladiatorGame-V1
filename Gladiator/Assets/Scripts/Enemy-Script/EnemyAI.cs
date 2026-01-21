@@ -67,22 +67,23 @@ public class EnemyAI : MonoBehaviour
         actionTimer = Random.Range(waitInterval.x, waitInterval.y);
     }
 
-    void Update()
+void Update()
     {
         if (agent == null || !agent.isActiveAndEnabled) return;
         if (playerTarget == null) return;
 
-        // 1. IF DODGING, DO NOTHING (Root Motion handles movement)
+        // 1. IF DODGING, DO NOTHING
         if (isDodging) return;
 
         // ================================================================
-        //            STATE CHANGE DETECTOR (Reset Position on Finish)
+        //  A. STATE CHANGE DETECTOR (Reset Position on Finish / Interrupt)
+        //     (MOVED TO TOP: Runs even if Stunned)
         // ================================================================
         if (combatScript.isAttacking != lastAttackState)
         {
             lastAttackState = combatScript.isAttacking;
 
-            // IF ATTACK JUST FINISHED (Switched from True to False)
+            // IF ATTACK JUST FINISHED (or was INTERRUPTED by Block/Parry)
             if (!combatScript.isAttacking)
             {
                 // 1. Turn off Root Motion (Cleanup)
@@ -96,18 +97,29 @@ public class EnemyAI : MonoBehaviour
                 agent.updatePosition = true;
                 agent.updateRotation = true;
                 agent.isStopped = false; 
-
-                // Debug.Log($"<color=green>[{gameObject.name}] Attack Finished. Resetting Position.</color>");
             }
         }
 
         // ================================================================
-        //                       ATTACK BEHAVIOR
+        //  B. STUN CHECK (Stops AI logic while stunned)
+        // ================================================================
+        if (combatScript.isStunned) 
+        {
+            // Force stop the agent so they don't slide while playing the stun animation
+            if (!agent.isStopped) 
+            {
+                agent.isStopped = true;
+                agent.velocity = Vector3.zero;
+                agent.ResetPath(); // Forget where you were going
+            }
+            return; // Do nothing else while stunned
+        }
+
+        // ================================================================
+        //  C. ATTACK BEHAVIOR (Active)
         // ================================================================
         if (combatScript.isAttacking)
         {
-            // --- CHANGE: ALWAYS ENABLE ROOT MOTION FOR ANY ATTACK ---
-            
             // 1. Enable Root Motion so the animation moves the enemy
             anim.applyRootMotion = true;
 
@@ -127,6 +139,8 @@ public class EnemyAI : MonoBehaviour
         }
 
         distanceToPlayer = Vector3.Distance(transform.position, playerTarget.position);
+
+        // ... (Rest of Movement/Strafe logic remains exactly the same) ...
 
         // 3. TRY ATTACK
         if (combatScript.CanAttack(distanceToPlayer))
@@ -204,7 +218,7 @@ public class EnemyAI : MonoBehaviour
         if (isDodging) return;
         isDodging = true;
         anim.applyRootMotion = true;
-        anim.SetTrigger(animDodgeTriggerID);
+        anim.SetTrigger("Roll");
         agent.updatePosition = false; 
         agent.updateRotation = false;
         agent.isStopped = true;

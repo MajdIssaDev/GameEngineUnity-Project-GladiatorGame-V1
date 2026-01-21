@@ -22,15 +22,15 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 3105774017240068612, guid: 36e4225cdbba3264f8d3e2dd3dc072a7, type: 3}
       propertyPath: m_LocalPosition.x
-      value: 25.781843
+      value: 20.431122
       objectReference: {fileID: 0}
     - target: {fileID: 3105774017240068612, guid: 36e4225cdbba3264f8d3e2dd3dc072a7, type: 3}
       propertyPath: m_LocalPosition.y
-      value: 0.00000047683716
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 3105774017240068612, guid: 36e4225cdbba3264f8d3e2dd3dc072a7, type: 3}
       propertyPath: m_LocalPosition.z
-      value: -15.751383
+      value: -17.184647
       objectReference: {fileID: 0}
     - target: {fileID: 3105774017240068612, guid: 36e4225cdbba3264f8d3e2dd3dc072a7, type: 3}
       propertyPath: m_LocalRotation.w
@@ -116,6 +116,14 @@ PrefabInstance:
       propertyPath: weaponOffsets.Array.data[3].rotationOffset.z
       value: 87.624
       objectReference: {fileID: 0}
+    - target: {fileID: 7394991064907066232, guid: 36e4225cdbba3264f8d3e2dd3dc072a7, type: 3}
+      propertyPath: parryVfxPrefab
+      value: 
+      objectReference: {fileID: 4619977824061529436, guid: be4b726ddd37b86489a81ce1bd6a3448, type: 3}
+    - target: {fileID: 7394991064907066232, guid: 36e4225cdbba3264f8d3e2dd3dc072a7, type: 3}
+      propertyPath: sparkVfxPrefab
+      value: 
+      objectReference: {fileID: 3526038712303539940, guid: 9e09d5858b429f948a93dfa39f23f5ce, type: 3}
     - target: {fileID: 7636690306925440615, guid: 36e4225cdbba3264f8d3e2dd3dc072a7, type: 3}
       propertyPath: stoppingDistance
       value: 0.8

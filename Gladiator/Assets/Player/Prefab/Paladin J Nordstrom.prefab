@@ -57,7 +57,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: da6a0a5a856d6e242815376e9e80ccfe, type: 3}
       propertyPath: m_LocalPosition.x
-      value: 19.880169
+      value: 24.508669
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: da6a0a5a856d6e242815376e9e80ccfe, type: 3}
       propertyPath: m_LocalPosition.y
@@ -65,7 +65,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: da6a0a5a856d6e242815376e9e80ccfe, type: 3}
       propertyPath: m_LocalPosition.z
-      value: -19.036537
+      value: -17.283485
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: da6a0a5a856d6e242815376e9e80ccfe, type: 3}
       propertyPath: m_LocalRotation.w
@@ -508,6 +508,7 @@ MonoBehaviour:
   animator: {fileID: 7397343574157121377}
   movementScript: {fileID: 7484345045062120116}
   stats: {fileID: 0}
+  blockCooldown: 1
 --- !u!114 &1791110732975091923
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -575,6 +576,8 @@ MonoBehaviour:
   defence: 0
   regenSpeed: 1
   attackSpeed: 1
+  maxEnergy: 100
+  energyRegenRate: 10
   healthScript: {fileID: 0}
 --- !u!114 &2382441736841725214
 MonoBehaviour:
@@ -592,13 +595,13 @@ MonoBehaviour:
   - {fileID: 8678474993104756252}
   - {fileID: 7466855591793834440}
   - {fileID: 7243912113319982581}
-  isBlocking: 0
   flinchForceForwardBack: 30
   flinchForceLeftRight: 20
   impactDuration: 0.15
   recoverySpeed: 10
-  bloodVfxPrefab: {fileID: 1000013355911406, guid: d32aa916f50cac94db11e6f19821a58f, type: 3}
-  sparkVfxPrefab: {fileID: 1834194341294532, guid: d5f26854a8904624c8073139cd2eb346, type: 3}
+  bloodVfxPrefab: {fileID: 1962516439210982, guid: 3c657dedc43d33a4987fbf09e6363067, type: 3}
+  sparkVfxPrefab: {fileID: 3526038712303539940, guid: 9e09d5858b429f948a93dfa39f23f5ce, type: 3}
+  parryVfxPrefab: {fileID: 4619977824061529436, guid: be4b726ddd37b86489a81ce1bd6a3448, type: 3}
   snapVfxToBone: 1
   flinchAngle: 45
 --- !u!114 &4957383761697081019
@@ -618,7 +621,11 @@ MonoBehaviour:
   stats: {fileID: 7572183670210437428}
   playerHudSlider: {fileID: 0}
   enemyFloatingBar: {fileID: 0}
+  currentEnergy: 0
+  energyHudSlider: {fileID: 0}
+  IsBlocking: 0
   isInvincible: 0
+  IsDead: 0
 --- !u!208 &2364627279851602975
 NavMeshObstacle:
   m_ObjectHideFlags: 0

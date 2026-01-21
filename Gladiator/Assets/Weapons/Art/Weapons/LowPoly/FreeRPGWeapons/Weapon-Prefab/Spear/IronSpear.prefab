@@ -167,7 +167,7 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: -8679921383154817045, guid: df3f07283842c864abb844da441c0bf8, type: 3}
       propertyPath: m_LocalPosition.x
-      value: 16.510284
+      value: 8.524543
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: df3f07283842c864abb844da441c0bf8, type: 3}
       propertyPath: m_LocalPosition.y
@@ -175,7 +175,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: df3f07283842c864abb844da441c0bf8, type: 3}
       propertyPath: m_LocalPosition.z
-      value: -3.230979
+      value: -7.569921
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: df3f07283842c864abb844da441c0bf8, type: 3}
       propertyPath: m_LocalRotation.w
@@ -257,10 +257,14 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   playerCombat: {fileID: 0}
   ownerStats: {fileID: 0}
+  characterHolder: {fileID: 0}
   damageAmount: 20
   knockbackStrength: 10
   isHeavyAttack: 0
   hitSounds: []
+  swingSound: {fileID: 0}
+  blockSound: {fileID: 0}
+  parrySound: {fileID: 0}
   weaponTrail: {fileID: 4495871872831876708}
 --- !u!65 &7607170708505305554
 BoxCollider:

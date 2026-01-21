@@ -1,7 +1,7 @@
 using UnityEngine;
 using UnityEngine.EventSystems;
+using System.Collections; // Required for Coroutines
 
-// 1. Add the Interface here
 public class PlayerCombat : MonoBehaviour, ICombatReceiver
 {
     [Header("References")]
@@ -26,15 +26,27 @@ public class PlayerCombat : MonoBehaviour, ICombatReceiver
     private float lastAttackTime = 0f;
     private float maxAttackDuration = 5.0f; 
     private float nextAttackTime = 0f;      
+    
+    [Header("Block Settings")]
+    public float blockCooldown = 0.5f; 
+    public float blockStartupTime = 0.1f; // Delay before block logic kicks in
+    
+    private float nextBlockTime = 0f;
+    private Coroutine activeBlockCoroutine; // To track and cancel the delay
+    
+    [Header("Energy Settings")] 
+    public float lightAttackCost = 10f;
+    public float heavyAttackCost = 25f;
+    
+    private HealthScript healthScript;
 
     void Awake()
     {
         if (animator == null) animator = GetComponent<Animator>();
         if (stats == null) stats = GetComponent<Stats>();
+        healthScript = GetComponent<HealthScript>();
         
-        // Grab the generic event script
         animationEvents = animator.GetComponent<CombatAnimationEvents>();
-
         baseController = animator.runtimeAnimatorController; 
         isAttacking = false;
     }
@@ -43,7 +55,6 @@ public class PlayerCombat : MonoBehaviour, ICombatReceiver
     {
         currentWeaponScript = newWeaponObject.GetComponent<WeaponDamage>();
 
-        // Pass the weapon to the generic event script
         if (animationEvents != null)
         {
             animationEvents.SetCurrentWeapon(currentWeaponScript);
@@ -62,41 +73,113 @@ public class PlayerCombat : MonoBehaviour, ICombatReceiver
     
     void Update()
     {
-        if (EventSystem.current != null && EventSystem.current.IsPointerOverGameObject())
-        {
-            return;
-        }
+        if (EventSystem.current != null && EventSystem.current.IsPointerOverGameObject()) return;
+        
         // Failsafe
-        if (isAttacking && Time.time > lastAttackTime + maxAttackDuration)
+        if (isAttacking && Time.time > lastAttackTime + maxAttackDuration) OnFinishAttack();
+        
+        // --- 1. BLOCKING LOGIC ---
+        if (healthScript != null)
         {
-            OnFinishAttack(); // Call the interface method directly
-        }
+            if (Input.GetKeyDown(KeyCode.E) && !isAttacking)
+            {
+                if (Time.time >= nextBlockTime)
+                {
+                    // A. Visuals START NOW
+                    animator.SetBool("Blocking", true);
+                    if (movementScript != null) movementScript.isAttacking = true; // Stop moving
+                    
+                    // B. Logic STARTS LATER (Wait for animation)
+                    if (activeBlockCoroutine != null) StopCoroutine(activeBlockCoroutine);
+                    activeBlockCoroutine = StartCoroutine(EnableBlockRoutine());
+                }
+            }
+            else if (Input.GetKeyUp(KeyCode.E))
+            {
+                // Cancel the routine if we released E too fast
+                if (activeBlockCoroutine != null) StopCoroutine(activeBlockCoroutine);
 
-        // Input Handling
+                // Stop Logic
+                healthScript.StopBlocking();
+                
+                // Stop Visuals
+                animator.SetBool("Blocking", false);
+                if (movementScript != null) movementScript.isAttacking = false; // Restore movement
+
+                nextBlockTime = Time.time + blockCooldown;
+            }
+        }
+        
+        // Don't attack while blocking!
+        if (healthScript != null && healthScript.IsBlocking) return;
+        
+        // --- 2. ATTACK LOGIC (With Energy Check) ---
         if (Input.GetButtonDown("Fire1"))
         {
             if (Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl))
             {
-                if (!isAttacking && Time.time >= nextAttackTime) PerformHeavyAttack();
+                // HEAVY ATTACK
+                if (!isAttacking && Time.time >= nextAttackTime) 
+                {
+                    // Check Energy Cost
+                    if (healthScript != null && healthScript.TrySpendEnergy(heavyAttackCost))
+                    {
+                        PerformHeavyAttack();
+                    }
+                    else
+                    {
+                        Debug.Log("Not enough energy for Heavy Attack!");
+                    }
+                }
             }
             else
             {
+                // LIGHT ATTACK
                 if (isAttacking)
                 {
                     if (!isHeavyAttacking) inputQueued = true;
                 }
                 else if (Time.time >= nextAttackTime)
                 {
-                    comboStep = 0;
-                    PerformComboStep();
+                    // Check Energy Cost
+                    if (healthScript != null && healthScript.TrySpendEnergy(lightAttackCost))
+                    {
+                        comboStep = 0;
+                        PerformComboStep();
+                    }
+                    else
+                    {
+                        Debug.Log("Out of Energy!");
+                    }
                 }
             }
         }
 
-        // Combo Logic
+        // COMBO QUEUE LOGIC
         if (inputQueued && canCombo)
         {
-            PerformComboStep();
+            // We also charge energy for the next hit in the combo!
+            if (healthScript != null && healthScript.TrySpendEnergy(lightAttackCost))
+            {
+                PerformComboStep();
+            }
+            else
+            {
+                inputQueued = false; // Cancel combo if energy runs out mid-swing
+            }
+        }
+    }
+
+    // --- NEW: Block Delay Routine ---
+    IEnumerator EnableBlockRoutine()
+    {
+        // Wait for the animation to actually raise the shield
+        yield return new WaitForSeconds(0);
+        
+        // NOW turn on the actual blocking stats
+        if (healthScript != null)
+        {
+            healthScript.StartBlocking(); 
         }
     }
 
@@ -163,9 +246,6 @@ public class PlayerCombat : MonoBehaviour, ICombatReceiver
         animator.SetTrigger("HeavyAttack");
     }
 
-    // --- INTERFACE IMPLEMENTATION ---
-    // These names match the interface exactly
-
     public void OnComboWindowOpen()
     {
         if (!isHeavyAttacking) canCombo = true;
@@ -174,9 +254,14 @@ public class PlayerCombat : MonoBehaviour, ICombatReceiver
     public void OnFinishAttack()
     {
         if (Time.time - lastAttackTime < 0.2f) return;
-
         ResetCombatState();
         nextAttackTime = Time.time + 0.2f; 
+    }
+    
+    public void OnInterrupted()
+    {
+        animator.SetTrigger("Recoil");
+        ResetCombatState();
     }
 
     private void ResetCombatState()
@@ -191,7 +276,6 @@ public class PlayerCombat : MonoBehaviour, ICombatReceiver
 
         if (movementScript != null) movementScript.isAttacking = false;
         
-        // Safety: ensure hitbox closes
         if (animationEvents != null) animationEvents.CloseDamageWindow();
     }
 }

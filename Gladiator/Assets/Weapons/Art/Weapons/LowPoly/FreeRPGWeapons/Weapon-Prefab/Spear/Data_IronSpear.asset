@@ -20,3 +20,5 @@ MonoBehaviour:
   hitSounds:
   - {fileID: 8300000, guid: 4fcb1e298ab7c5a42b8c415d200c9ea2, type: 3}
   swingSound: {fileID: 8300000, guid: 52438a8d0624b62448be4931c0cd2ef8, type: 3}
+  blockSound: {fileID: 8300000, guid: 57960ee1d6939c4498b6a7af079b650e, type: 3}
+  parrySound: {fileID: 8300000, guid: d43fe69a4c6751c458c97856a88310e2, type: 3}

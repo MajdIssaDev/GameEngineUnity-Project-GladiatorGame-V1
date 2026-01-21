@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using TMPro;
 using System.Linq; 
 using System; 
+using UnityEngine.UI; 
 
 public class GameManager : MonoBehaviour
 {
@@ -37,11 +38,10 @@ public class GameManager : MonoBehaviour
     public GameObject loseMenuPanel;
     
     [Header("Pause System")]
-    public GameObject pauseContainer;    // The transparent background (Parent)
-    public GameObject pauseMainPanel;    // The buttons (Resume, Settings, Exit)
-    public GameObject settingsPanel;     // The settings sub-menu
+    public GameObject pauseContainer;    
+    public GameObject pauseMainPanel;    
+    public GameObject settingsPanel;     
     
-    // Internal variable
     private bool isPaused = false;
     
     [Header("UI Text")]
@@ -49,7 +49,8 @@ public class GameManager : MonoBehaviour
     public TextMeshProUGUI roundText;
     
     [Header("UI Sliders")]
-    public UnityEngine.UI.Slider playerHealthBar;
+    public Slider playerHealthBar;
+    public Slider playerEnergyBar;
     
     [Header("Starting Gear")]
     public WeaponData defaultWeapon;
@@ -82,154 +83,111 @@ public class GameManager : MonoBehaviour
         }
     }
     
+    // ... (TogglePause, Resume, Settings logic remains unchanged) ...
     public void TogglePause()
     {
         isPaused = !isPaused;
 
         if (isPaused)
         {
-            // =========================
-            //      PAUSING THE GAME
-            // =========================
             Time.timeScale = 0f;
-            AudioListener.pause = true; // Silence Audio
+            AudioListener.pause = true; 
 
-            // 1. "SMART" CHECK: Is the Shop (or other menu) open?
             if (loseMenuPanel != null && loseMenuPanel.activeSelf)
             {
-                menuToRestore = loseMenuPanel; // Remember it!
-                loseMenuPanel.SetActive(false); // Hide it for now
+                menuToRestore = loseMenuPanel; 
+                loseMenuPanel.SetActive(false); 
             }
             else if (mainMenuPanel != null && mainMenuPanel.activeSelf)
             {
-                menuToRestore = mainMenuPanel; // Remember it!
-                mainMenuPanel.SetActive(false); // Hide it for now
+                menuToRestore = mainMenuPanel; 
+                mainMenuPanel.SetActive(false); 
             }
             else if (shopPanel != null && shopPanel.activeSelf)
             {
-                menuToRestore = shopPanel; // Remember it!
-                shopPanel.SetActive(false); // Hide it for now
+                menuToRestore = shopPanel; 
+                shopPanel.SetActive(false); 
             }
             else
             {
-                menuToRestore = null; // Nothing was open, just normal gameplay
+                menuToRestore = null; 
             }
 
-            // 2. Show Pause Menu
             if (pauseContainer != null) pauseContainer.SetActive(true);
-            
-            // 3. Reset Hierarchy (Always show Main Pause buttons first)
             if (pauseMainPanel != null) pauseMainPanel.SetActive(true);
             if (settingsPanel != null) settingsPanel.SetActive(false);
 
-            // 4. Unlock Cursor
             Cursor.lockState = CursorLockMode.None;
             Cursor.visible = true;
-
-            // 5. Hide HUD
             hudPanel.SetActive(false);
         }
         else
         {
-            // =========================
-            //      RESUMING THE GAME
-            // =========================
             Time.timeScale = 1f;
-            AudioListener.pause = false; // Restore Audio
+            AudioListener.pause = false; 
 
-            // 1. Hide Pause Menu
             if (pauseContainer != null) pauseContainer.SetActive(false);
 
-            // 2. DECIDE WHAT TO SHOW
             if (menuToRestore != null)
             {
-                // A. We had a menu open (like Shop), bring it back!
                 menuToRestore.SetActive(true);
-                
-                // IMPORTANT: Keep Cursor UNLOCKED for the shop
                 Cursor.lockState = CursorLockMode.None;
                 Cursor.visible = true;
-                
-                // Clear the memory
                 menuToRestore = null; 
             }
             else
             {
-                // B. No menu was open, go back to Action
                 hudPanel.SetActive(true);
-                
-                // Lock Cursor (Only if we are fully back in the game)
                 Cursor.lockState = CursorLockMode.Locked;
                 Cursor.visible = false;
             }
         }
     }
 
-    // 1. FOR THE "RESUME" BUTTON
-    public void OnResumeButtonPressed()
-    {
-        // Simply calling TogglePause will handle unfreezing time, 
-        // hiding the menu, and locking the cursor back.
-        TogglePause();
-    }
+    public void OnResumeButtonPressed() { TogglePause(); }
 
-    // 2. FOR THE "SETTINGS" BUTTON
     public void OnControlsButtonPressed()
     {
         if (pauseMainPanel != null && settingsPanel != null)
         {
-            pauseMainPanel.SetActive(false); // Hide the buttons (Resume/Exit)
-            settingsPanel.SetActive(true);   // Show the sliders/options
+            pauseMainPanel.SetActive(false); 
+            settingsPanel.SetActive(true);   
         }
     }
 
-    // 3. FOR THE "BACK" BUTTON (Inside Settings Panel)
     public void OnBackFromSettingsPressed()
     {
         if (pauseMainPanel != null && settingsPanel != null)
         {
-            settingsPanel.SetActive(false);  // Hide Settings
-            pauseMainPanel.SetActive(true);  // Show Main Pause Menu again
+            settingsPanel.SetActive(false);  
+            pauseMainPanel.SetActive(true);  
         }
     }
     
     public void OnPlayButtonPressed()
     {
-        // 1. Reset Game Variables
         currentRound = 0;
         money = 0; 
-    
-        // --- RESET WEAPONS ---
-        ownedWeapons.Clear(); // Delete all bought weapons
+        ownedWeapons.Clear(); 
     
         if (defaultWeapon != null)
         {
-            ownedWeapons.Add(defaultWeapon); // Add the starter sword back
-            equippedWeapon = defaultWeapon;  // Equip it
+            ownedWeapons.Add(defaultWeapon); 
+            equippedWeapon = defaultWeapon;  
         }
-        // ---------------------
 
-        // 2. Cleanup UI
         mainMenuPanel.SetActive(false);
         shopPanel.SetActive(false);
         loseMenuPanel.SetActive(false); 
         hudPanel.SetActive(true);
 
-        // 3. Destroy All Enemies
         GameObject[] existingEnemies = GameObject.FindGameObjectsWithTag("Enemy");
-        foreach (GameObject enemy in existingEnemies)
-        {
-            Destroy(enemy);
-        }
+        foreach (GameObject enemy in existingEnemies) Destroy(enemy);
 
-        // 4. Reset Enemy Count
         enemiesAlive = 0; 
         menuToRestore = null;
         
-        // 5. Spawn Player 
-        // (This AUTOMATICALLY resets stats because it spawns a fresh prefab)
         SpawnPlayer();
-    
         StartNextRound();
         Cursor.lockState = CursorLockMode.Locked;
         Cursor.visible = false;
@@ -245,12 +203,13 @@ public class GameManager : MonoBehaviour
             currentPlayerObject.transform.position = playerSpawnPoint.position;
             currentPlayerObject.transform.rotation = playerSpawnPoint.rotation;
             
-            // Refill HP for next round
             HealthScript pHealth = currentPlayerObject.GetComponent<HealthScript>();
             if (pHealth != null)
             {
                 pHealth.playerHudSlider = playerHealthBar; 
                 pHealth.setCurrentHealth(pHealth.getMaxHealth());
+                pHealth.energyHudSlider = playerEnergyBar;
+                pHealth.currentEnergy = pHealth.stats.maxEnergy;
             }
 
             MainCamera.GetComponent<SoulsCamera>().enabled = true;
@@ -273,10 +232,6 @@ public class GameManager : MonoBehaviour
 
     public void OnExitButtonPressed()
     {
-        // 1. Log message to prove button works
-        Debug.Log("Exit Button Pressed");
-
-        // 2. If running in the Unity Editor, stop playing
         #if UNITY_EDITOR
                 UnityEditor.EditorApplication.isPlaying = false;
         #else
@@ -293,33 +248,21 @@ public class GameManager : MonoBehaviour
         pauseContainer.SetActive(false);
     }
     
-    // --- 4. NEW FUNCTION CALLED BY HEALTH SCRIPT ---
     public void GameOver()
     {
         Debug.Log("Game Over!");
-
-        // Stop the player from moving/attacking (if they aren't already stopped by death logic)
         SetPlayerControls(false);
-
-        // Hide Gameplay UI
         hudPanel.SetActive(false);
         shopPanel.SetActive(false);
         
-        // Show Lose Menu
-        if (loseMenuPanel != null)
-        {
-            loseMenuPanel.SetActive(true);
-        }
+        if (loseMenuPanel != null) loseMenuPanel.SetActive(true);
         
-        // Optional: Stop the camera or unlock the cursor so the player can click buttons
         if (MainCamera != null)
         {
-             // MainCamera.GetComponent<SoulsCamera>().enabled = false; 
              Cursor.lockState = CursorLockMode.None;
              Cursor.visible = true;
         }
     }
-    // -----------------------------------------------
 
     public void StartNextRound()
     {
@@ -348,6 +291,7 @@ public class GameManager : MonoBehaviour
         {
             pHealth.playerHudSlider = playerHealthBar; 
             pHealth.setCurrentHealth(pHealth.getMaxHealth());
+            pHealth.energyHudSlider = playerEnergyBar;
         }
     }
 
@@ -371,7 +315,6 @@ public class GameManager : MonoBehaviour
         }
     }
 
-    // ... (Keep existing Enemy Spawning Logic) ...
     void SpawnEnemies()
     {
         if (currentRound % 5 == 0) SpawnBoss();
@@ -387,10 +330,13 @@ public class GameManager : MonoBehaviour
         Transform spawnPoint = enemySpawnPoints[UnityEngine.Random.Range(0, enemySpawnPoints.Length)];
         GameObject newBoss = Instantiate(bossToSpawn, spawnPoint.position, spawnPoint.rotation);
 
+        // 1. Always set level to currentRound
         Stats bossStats = newBoss.GetComponent<Stats>();
         if (bossStats != null) bossStats.SetLevel(currentRound);
 
+        // 2. Bosses act as "2 rounds ahead" for better weapons
         EquipEnemyBasedOnRound(newBoss, currentRound + 2); 
+        
         EnemyAI ai = newBoss.GetComponent<EnemyAI>();
         if (ai != null && currentPlayerObject != null)
         {
@@ -418,10 +364,13 @@ public class GameManager : MonoBehaviour
             
             GameObject newEnemy = Instantiate(enemyToSpawn, selectedPoint.position, selectedPoint.rotation);
 
+            // 1. Force Level = Round
             Stats enemyStats = newEnemy.GetComponent<Stats>();
             if (enemyStats != null) enemyStats.SetLevel(currentRound);
 
+            // 2. Random weighted weapon
             EquipEnemyBasedOnRound(newEnemy, currentRound);
+            
             EnemyAI ai = newEnemy.GetComponent<EnemyAI>();
             if (ai != null && currentPlayerObject != null)
             {
@@ -430,34 +379,102 @@ public class GameManager : MonoBehaviour
         }
     }
 
-    void EquipEnemyBasedOnRound(GameObject enemy, int roundOrLevel)
+    // ========================================================================
+    //             NEW: WEIGHTED RANDOM WEAPON SYSTEM
+    // ========================================================================
+
+// ========================================================================
+    //             NEW: SLIDING WINDOW & DYNAMIC WEIGHT SYSTEM
+    // ========================================================================
+
+    void EquipEnemyBasedOnRound(GameObject enemy, int currentRound)
     {
         EnemyWeaponHandler weaponHandler = enemy.GetComponent<EnemyWeaponHandler>();
         if (weaponHandler == null) return;
 
-        int targetTier = (roundOrLevel - 1) / 5;
-        if (targetTier < 0) targetTier = 0;
+        // 1. Calculate the Window based on User Rules
+        // Round 1-5   (Cycle 0): Tier 0 - 0
+        // Round 6-10  (Cycle 1): Tier 0 - 1
+        // Round 11-15 (Cycle 2): Tier 1 - 2
+        // Round 16-20 (Cycle 3): Tier 2 - 3
+        // Round 21-25 (Cycle 4): Tier 3 - 4
 
-        WeaponData weaponToGive = GetRandomWeaponByTier(targetTier);
+        int cycle = (currentRound - 1) / 5;
+        
+        // The highest tier unlocked for this block
+        int maxTier = Mathf.Clamp(cycle, 0, 4);
+        
+        // The lowest tier allowed for this block
+        int minTier = maxTier - 1;
+        if (cycle == 0) minTier = 0; // Special case for first 5 rounds
+        minTier = Mathf.Clamp(minTier, 0, 4);
 
-        if (weaponToGive != null) weaponHandler.EquipWeapon(weaponToGive);
+        // 2. Calculate "Progress" through the current block (0.0 to 1.0)
+        // Example: Round 6 (Start of block) -> Progress 0%
+        // Example: Round 10 (End of block)  -> Progress 100%
+        float blockProgress = ((currentRound - 1) % 5) / 4.0f;
+
+        WeaponData weaponToGive = GetDynamicWeightedWeapon(minTier, maxTier, blockProgress);
+
+        if (weaponToGive != null) 
+        {
+            weaponHandler.EquipWeapon(weaponToGive);
+        }
     }
 
-    WeaponData GetRandomWeaponByTier(int tier)
+    WeaponData GetDynamicWeightedWeapon(int minTier, int maxTier, float progress)
     {
-        List<WeaponData> potentialWeapons = globalEnemyWeaponList.Where(w => w.tier == tier).ToList();
+        // 1. Filter valid weapons
+        var validWeapons = globalEnemyWeaponList.Where(w => w.tier >= minTier && w.tier <= maxTier).ToList();
 
-        if (potentialWeapons.Count == 0 && globalEnemyWeaponList.Count > 0)
+        if (validWeapons.Count == 0) return null;
+
+        // 2. If Min == Max (e.g. Round 1-5), just pick random
+        if (minTier == maxTier)
         {
-            int maxTier = globalEnemyWeaponList.Max(w => w.tier);
-            potentialWeapons = globalEnemyWeaponList.Where(w => w.tier == maxTier).ToList();
+            return validWeapons[UnityEngine.Random.Range(0, validWeapons.Count)];
         }
 
-        if (potentialWeapons.Count == 0) return null;
+        // 3. Dynamic Weighting
+        // As 'progress' goes from 0 to 1, we shift probability from MinTier to MaxTier.
+        List<float> weights = new List<float>();
+        float totalWeight = 0;
 
-        return potentialWeapons[UnityEngine.Random.Range(0, potentialWeapons.Count)];
+        // We use a steep curve so the transition feels significant
+        // At start (0.0): 80% chance for Lower Tier
+        // At end   (1.0): 80% chance for Higher Tier
+        float maxTierChance = Mathf.Lerp(0.2f, 0.8f, progress); 
+        float minTierChance = 1.0f - maxTierChance;
+
+        foreach(var w in validWeapons)
+        {
+            float weight = 0;
+            if (w.tier == maxTier) weight = maxTierChance;
+            else if (w.tier == minTier) weight = minTierChance;
+            
+            // Safety: If you have multiple weapons of the same tier, split the chance
+            // (Optional optimization, but keeps math simple for now)
+            
+            weights.Add(weight);
+            totalWeight += weight;
+        }
+
+        // 4. Roll the Dice
+        float randomValue = UnityEngine.Random.Range(0, totalWeight);
+        float cursor = 0;
+
+        for(int i = 0; i < validWeapons.Count; i++)
+        {
+            cursor += weights[i];
+            if (randomValue <= cursor)
+            {
+                return validWeapons[i];
+            }
+        }
+
+        return validWeapons[0];
     }
-
+    
     public void EnemyDefeated()
     {
         enemiesAlive--;
@@ -482,7 +499,6 @@ public class GameManager : MonoBehaviour
         MainCamera.GetComponent<SoulsCamera>().enabled = false;
         Cursor.lockState = CursorLockMode.None;
         Cursor.visible = true;
-
     }
 
     public void AddMoney(int amount)

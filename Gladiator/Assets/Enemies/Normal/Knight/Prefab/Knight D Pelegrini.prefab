@@ -620,15 +620,15 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 54b9f91de1e05234abd98cd65c907434, type: 3}
       propertyPath: m_LocalPosition.x
-      value: 24.432549
+      value: 19.707985
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 54b9f91de1e05234abd98cd65c907434, type: 3}
       propertyPath: m_LocalPosition.y
-      value: 0.00000023841858
+      value: 0.00000047683716
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 54b9f91de1e05234abd98cd65c907434, type: 3}
       propertyPath: m_LocalPosition.z
-      value: -16.644249
+      value: -19.237015
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 54b9f91de1e05234abd98cd65c907434, type: 3}
       propertyPath: m_LocalRotation.w
@@ -1081,7 +1081,11 @@ MonoBehaviour:
   stats: {fileID: 8066744794829492263}
   playerHudSlider: {fileID: 0}
   enemyFloatingBar: {fileID: 0}
+  currentEnergy: 0
+  energyHudSlider: {fileID: 0}
+  IsBlocking: 0
   isInvincible: 0
+  IsDead: 0
 --- !u!114 &8066744794829492263
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1099,6 +1103,8 @@ MonoBehaviour:
   defence: 0
   regenSpeed: 1
   attackSpeed: 1
+  maxEnergy: 100
+  energyRegenRate: 10
   healthScript: {fileID: 6243393242194356251}
 --- !u!114 &3798260582012950045
 MonoBehaviour:
@@ -1116,13 +1122,13 @@ MonoBehaviour:
   - {fileID: 8664349127063332693}
   - {fileID: 8873746677044341608}
   - {fileID: 7262717445014277308}
-  isBlocking: 0
   flinchForceForwardBack: 30
   flinchForceLeftRight: 20
   impactDuration: 0.15
   recoverySpeed: 5
   bloodVfxPrefab: {fileID: 1962516439210982, guid: 3c657dedc43d33a4987fbf09e6363067, type: 3}
-  sparkVfxPrefab: {fileID: 1962516439210982, guid: 3c657dedc43d33a4987fbf09e6363067, type: 3}
+  sparkVfxPrefab: {fileID: 3526038712303539940, guid: 9e09d5858b429f948a93dfa39f23f5ce, type: 3}
+  parryVfxPrefab: {fileID: 4619977824061529436, guid: be4b726ddd37b86489a81ce1bd6a3448, type: 3}
   snapVfxToBone: 1
   flinchAngle: 45
 --- !u!114 &7667006966756114805
