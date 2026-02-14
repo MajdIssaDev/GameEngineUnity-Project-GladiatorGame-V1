@@ -85,11 +85,11 @@ public class PlayerCombat : MonoBehaviour, ICombatReceiver
             {
                 if (Time.time >= nextBlockTime)
                 {
-                    // A. Visuals START NOW
+                    // Visuals START NOW
                     animator.SetBool("Blocking", true);
                     if (movementScript != null) movementScript.isAttacking = true; // Stop moving
                     
-                    // B. Logic STARTS LATER (Wait for animation)
+                    // Logic STARTS LATER (Wait for animation)
                     if (activeBlockCoroutine != null) StopCoroutine(activeBlockCoroutine);
                     activeBlockCoroutine = StartCoroutine(EnableBlockRoutine());
                 }
@@ -110,7 +110,7 @@ public class PlayerCombat : MonoBehaviour, ICombatReceiver
             }
         }
         
-        // Don't attack while blocking!
+        // Dont attack while blocking!
         if (healthScript != null && healthScript.IsBlocking) return;
         
         // --- 2. ATTACK LOGIC (With Energy Check) ---
@@ -170,7 +170,7 @@ public class PlayerCombat : MonoBehaviour, ICombatReceiver
         }
     }
 
-    // --- NEW: Block Delay Routine ---
+    // --- Block Delay Routine ---
     IEnumerator EnableBlockRoutine()
     {
         // Wait for the animation to actually raise the shield
