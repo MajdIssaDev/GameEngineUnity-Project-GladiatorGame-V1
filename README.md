@@ -30,7 +30,7 @@ https://medal.tv/games/screen-capture/clips/m7jJwNLp0eYWWFBxI?invite=cr-MSxxWkMs
 
 ---
 
-## 🛠️ Tech Stack & Patterns
+Tech Stack & Patterns
 * **Engine:** Unity 2022+ / C#
 * **Architecture:** Component-Based Design, Interface Implementation (`ICombatReceiver`).
 * **Patterns:** Finite State Machine (FSM) for combat states, Observer-lite for animation events.
