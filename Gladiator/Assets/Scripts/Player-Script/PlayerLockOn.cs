@@ -9,7 +9,6 @@ public class PlayerLockOn : MonoBehaviour
     public float maxLockOnDistance = 25f;
     public KeyCode lockKey = KeyCode.Q;
 
-    // This is the variable your PlayerMovement script reads
     public Transform CurrentTarget { get; private set; }
 
     private Camera mainCam;
@@ -25,20 +24,21 @@ public class PlayerLockOn : MonoBehaviour
         if (Input.GetKeyDown(lockKey))
         {
             if (CurrentTarget != null)
-            {
                 Unlock(); // Press Q to cancel
-            }
             else
-            {
                 FindTarget(); // Press Q to find
-            }
         }
 
         // 2. Break lock if target is dead, disabled, or too far
         if (CurrentTarget != null)
         {
             float dist = Vector3.Distance(transform.position, CurrentTarget.position);
-            if (!CurrentTarget.gameObject.activeInHierarchy || dist > maxLockOnDistance)
+            
+            // FIX 2: Check if the target's layer is STILL part of the enemyLayer mask
+            // If you change the enemy's layer to "Default" when they die, this will trigger the unlock.
+            bool isStillEnemyLayer = (enemyLayer.value & (1 << CurrentTarget.gameObject.layer)) > 0;
+
+            if (!CurrentTarget.gameObject.activeInHierarchy || !isStillEnemyLayer || dist > maxLockOnDistance)
             {
                 Unlock();
             }
@@ -54,17 +54,20 @@ public class PlayerLockOn : MonoBehaviour
 
         foreach (Collider enemy in enemies)
         {
-            Vector3 directionToEnemy = enemy.transform.position - transform.position;
+            // FIX 1: Use .root to ensure we target the main enemy parent, 
+            // not a floating child UI collider or head hitbox.
+            Transform rootEnemy = enemy.transform.root;
+
+            Vector3 directionToEnemy = rootEnemy.position - transform.position;
             float dSqrToTarget = directionToEnemy.sqrMagnitude;
             
-            // Check if enemy is generally in front of camera view (optional but feels better)
-            Vector3 viewportPos = mainCam.WorldToViewportPoint(enemy.transform.position);
+            Vector3 viewportPos = mainCam.WorldToViewportPoint(rootEnemy.position);
             bool isOnScreen = viewportPos.x > 0 && viewportPos.x < 1 && viewportPos.y > 0 && viewportPos.y < 1;
 
             if (isOnScreen && dSqrToTarget < shortestDistance)
             {
                 shortestDistance = dSqrToTarget;
-                bestTarget = enemy.transform;
+                bestTarget = rootEnemy;
             }
         }
 
@@ -76,7 +79,6 @@ public class PlayerLockOn : MonoBehaviour
         CurrentTarget = null;
     }
 
-    // Visualize Range in Editor
     void OnDrawGizmosSelected()
     {
         Gizmos.color = Color.red;

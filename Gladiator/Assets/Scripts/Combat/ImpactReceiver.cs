@@ -2,7 +2,9 @@ using UnityEngine;
 
 public class ImpactReceiver : MonoBehaviour
 {
-    private float mass = 3.0f; // Heavier enemies need more force to move
+    public float mass = 3.0f; 
+    public float damping = 5f; // How fast the knockback wears off
+    
     private Vector3 impact = Vector3.zero;
     private CharacterController character;
 
@@ -13,26 +15,37 @@ public class ImpactReceiver : MonoBehaviour
 
     void Update()
     {
-        // --- FIX: SAFETY CHECK ---
-        // If the enemy is dead (controller disabled), stop trying to push it.
         if (character == null || !character.enabled) return;
-        // -------------------------
 
-        // Apply the impact force over time
-        if (impact.magnitude > 0.2f)
+        if (impact.sqrMagnitude > 0.04f) // slightly cheaper than .magnitude
         {
-            character.Move(impact * Time.deltaTime);
+            // 1. Calculate the intended move for this frame
+            Vector3 intendedMove = impact * Time.deltaTime;
+
+            // 2. ANTI-TUNNELING FIX: Clamp the movement step
+            // Never let the character move further in one frame than its own radius
+            float maxStep = character.radius * 0.9f; 
+            if (intendedMove.magnitude > maxStep)
+            {
+                intendedMove = intendedMove.normalized * maxStep;
+            }
+
+            // 3. Move the character
+            character.Move(intendedMove);
         }
         
-        // Consume the impact energy
-        impact = Vector3.Lerp(impact, Vector3.zero, 5 * Time.deltaTime);
+        // 4. MATH FIX: Better friction
+        // Lerp with Time.deltaTime isn't perfectly smooth across varying framerates.
+        // This is a more consistent way to bleed off velocity.
+        impact = Vector3.Lerp(impact, Vector3.zero, damping * Time.deltaTime);
     }
 
-    // Call this function from your Sword script
     public void AddImpact(Vector3 dir, float force)
     {
         dir.Normalize();
-        if (dir.y < 0) dir.y = -dir.y; // Reflect down force on the ground
-        impact += dir.normalized * force / mass;
+        if (dir.y < 0) dir.y = -dir.y; 
+        
+        // Add the new force to the existing impact
+        impact += dir * (force / mass);
     }
 }

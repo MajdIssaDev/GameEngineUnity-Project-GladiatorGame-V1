@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 6a7c0edfb95ad0b4bb8dd470b4759412, type: 3}
   m_Name: WarriorSword
   m_EditorClassIdentifier: 
-  weaponName: Iron Sword
+  weaponName: Warrior Sword
   price: 500
   tier: 3
   weaponPrefab: {fileID: 6186729057062343376, guid: 0f825ca2a43c3ea4fa0ea0f7abd33421, type: 3}

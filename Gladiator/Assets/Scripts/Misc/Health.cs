@@ -224,7 +224,9 @@ public class HealthScript : MonoBehaviour
         foreach (Collider c in allColliders) c.enabled = false; 
 
         if (enemyFloatingBar != null) Destroy(enemyFloatingBar.gameObject);
-
+        
+        gameObject.layer = LayerMask.NameToLayer("Default");
+        
         // Handle Game Manager
         if (gameObject.CompareTag("Enemy"))
         {

@@ -624,7 +624,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 2a66861653c73a04497ea323ba331935, type: 3}
       propertyPath: m_LocalPosition.x
-      value: 25.179544
+      value: 20.667025
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 2a66861653c73a04497ea323ba331935, type: 3}
       propertyPath: m_LocalPosition.y
@@ -632,7 +632,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 2a66861653c73a04497ea323ba331935, type: 3}
       propertyPath: m_LocalPosition.z
-      value: -15.720856
+      value: -18.659718
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 2a66861653c73a04497ea323ba331935, type: 3}
       propertyPath: m_LocalRotation.w
@@ -1306,7 +1306,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   animator: {fileID: 8696483322774614838}
   statsScript: {fileID: 3800540817401533415}
-  attackRange: 2.5
+  attackRange: 1.8
   attackCooldown: 2
   minAttackDelay: 0.2
   heavyAttackChance: 0.3

@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 6a7c0edfb95ad0b4bb8dd470b4759412, type: 3}
   m_Name: Data_TitaniumAxe 2
   m_EditorClassIdentifier: 
-  weaponName: Iron Axe
+  weaponName: Titanium Axe
   price: 750
   tier: 4
   weaponPrefab: {fileID: 3818349383127093308, guid: 023a71c749c21ef4082103fc1ba74728, type: 3}

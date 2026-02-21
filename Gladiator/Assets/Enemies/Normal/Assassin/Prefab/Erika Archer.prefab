@@ -1188,7 +1188,11 @@ MonoBehaviour:
   stats: {fileID: 2225068052605545231}
   playerHudSlider: {fileID: 0}
   enemyFloatingBar: {fileID: 0}
+  currentEnergy: 0
+  energyHudSlider: {fileID: 0}
+  IsBlocking: 0
   isInvincible: 0
+  IsDead: 0
 --- !u!114 &2225068052605545231
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1206,6 +1210,8 @@ MonoBehaviour:
   defence: 0
   regenSpeed: 1
   attackSpeed: 1
+  maxEnergy: 100
+  energyRegenRate: 10
   healthScript: {fileID: 119191808627635496}
 --- !u!114 &7394991064907066232
 MonoBehaviour:
@@ -1223,13 +1229,13 @@ MonoBehaviour:
   - {fileID: 7143067556511703299}
   - {fileID: 9211812534610807530}
   - {fileID: 8993403166118856407}
-  isBlocking: 0
   flinchForceForwardBack: 30
   flinchForceLeftRight: 20
   impactDuration: 0.15
   recoverySpeed: 5
   bloodVfxPrefab: {fileID: 1962516439210982, guid: 3c657dedc43d33a4987fbf09e6363067, type: 3}
   sparkVfxPrefab: {fileID: 1962516439210982, guid: 3c657dedc43d33a4987fbf09e6363067, type: 3}
+  parryVfxPrefab: {fileID: 0}
   snapVfxToBone: 1
   flinchAngle: 45
 --- !u!114 &7111799172039452448
@@ -1308,7 +1314,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   animator: {fileID: 9077499657386895486}
   statsScript: {fileID: 0}
-  attackRange: 2.5
+  attackRange: 1.7
   attackCooldown: 2
   minAttackDelay: 0.2
   heavyAttackChance: 0.3
@@ -1335,6 +1341,7 @@ MonoBehaviour:
   minCrowdDistance: 2
   waitInterval: {x: 2, y: 5}
   moveDuration: {x: 0.5, y: 1.2}
+  dodgeChance: 30
 --- !u!1 &2521235720828239002
 GameObject:
   m_ObjectHideFlags: 0
