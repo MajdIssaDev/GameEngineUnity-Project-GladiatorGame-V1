@@ -49,7 +49,7 @@ public class WeaponDamage : MonoBehaviour
 
     private void OnTriggerEnter(Collider other)
     {
-        // 1. Safety Checks
+        //1. Safety Checks
         if (characterHolder != null)
         {
             if (other.gameObject == characterHolder) return;
@@ -61,16 +61,16 @@ public class WeaponDamage : MonoBehaviour
 
         Vector3 safeHitPoint = transform.position;
 
-        // Prevent hitting the exact same bone twice
+        //Prevent hitting the exact same bone twice
         if (hitParts.Contains(other)) return;
         hitParts.Add(other);
         
-        // --- NEW: Check if we already hit this Enemy Root ---
+        //--- NEW: Check if we already hit this Enemy Root ---
         GameObject enemyRoot = other.transform.root.gameObject;
         bool isFirstHitOnEnemy = !damagedEnemies.Contains(enemyRoot);
-        // ---------------------------------------------------
+        //---------------------------------------------------
 
-        // 2. Determine Outcome
+        //2. Determine Outcome
         HealthScript health = other.GetComponentInParent<HealthScript>();
         HitReaction reaction = other.GetComponentInParent<HitReaction>();
         DefenseType defense = DefenseType.None;
@@ -81,14 +81,14 @@ public class WeaponDamage : MonoBehaviour
             defense = health.CheckDefense(attackerPos);
         }
 
-        // 3. Handle Visuals & SOUNDS
+        //3. Handle Visuals & SOUNDS
         if (reaction != null)
         {
             switch (defense)
             {
                 case DefenseType.Parry:
                     reaction.PlayParryVFX(safeHitPoint, transform.forward);
-                    // Only play sound if this is the first interaction with this enemy
+                    //Only play sound if this is the first interaction with this enemy
                     if (isFirstHitOnEnemy) PlaySoundEffect(parrySound, safeHitPoint); 
                     break;
 
@@ -105,25 +105,25 @@ public class WeaponDamage : MonoBehaviour
         }
         else 
         {
-            // Fallback for objects without HitReaction
+            //Fallback for objects without HitReaction
             if (isFirstHitOnEnemy) PlayRandomHitSound(safeHitPoint);
         }
 
-        // 4. Apply Damage Logic
+        //4. Apply Damage Logic
         if (isFirstHitOnEnemy)
         {
-            damagedEnemies.Add(enemyRoot); // Mark enemy as processed
+            damagedEnemies.Add(enemyRoot); //Mark enemy as processed
             
             if (health != null)
             {
                 if (health.isInvincible) return;
                 
-                // 1. Calculate Base Damage (Light vs Heavy)
+                //1. Calculate Base Damage (Light vs Heavy)
                 float baseDamage = isHeavyAttack ? damageAmount * 1.5f : damageAmount;
                 
-                // 2. Apply Strength Multiplier
-                // Formula: 1 Point = +10% Damage. 
-                // Example: Strength 5 = 50% boost -> Multiplier 1.5x
+                //2. Apply Strength Multiplier
+                //Formula: 1 Point = +10% Damage. 
+                //Example: Strength 5 = 50% boost -> Multiplier 1.5x
                 float finalDamage = baseDamage;
                 
                 if (ownerStats != null) 
@@ -132,12 +132,12 @@ public class WeaponDamage : MonoBehaviour
                     finalDamage *= strengthMod;
                 }
                 
-                // 3. Deal the Damage
+                //3. Deal the Damage
                 GameObject attackerRef = (characterHolder != null) ? characterHolder : transform.root.gameObject;
                 health.takeDamage(finalDamage, attackerRef); 
             }
 
-            // Apply Knockback only on non-defense hits
+            //Apply Knockback only on non-defense hits
             if (defense == DefenseType.None)
             {
                 ImpactReceiver enemyImpact = other.GetComponentInParent<ImpactReceiver>();
@@ -151,7 +151,7 @@ public class WeaponDamage : MonoBehaviour
         }
     }
 
-    // --- HELPERS ---
+    //--- HELPERS ---
 
     void PlaySoundEffect(AudioClip clip, Vector3 position)
     {
@@ -176,17 +176,17 @@ public class WeaponDamage : MonoBehaviour
         }
     }
 
-    public void EnableHitbox() 
+    public void EnableHitbox() //This is called via Animation Events when the swing starts
     {
         hitParts.Clear();
-        damagedEnemies.Clear(); // Reset the list so we can hit them again next swing
+        damagedEnemies.Clear(); //Reset the list so we can hit them again next swing
         
         if (myCollider != null) myCollider.enabled = true;
         if (weaponTrail != null) weaponTrail.emitting = true;
         PlaySoundEffect(swingSound, transform.position); 
     }
 
-    public void DisableHitbox()
+    public void DisableHitbox() //This is called via Animation Events when the swing ends
     {
         if (myCollider != null) myCollider.enabled = false; 
         if (weaponTrail != null) weaponTrail.emitting = false;

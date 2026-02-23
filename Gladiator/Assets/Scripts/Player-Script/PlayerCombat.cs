@@ -1,6 +1,6 @@
 using UnityEngine;
 using UnityEngine.EventSystems;
-using System.Collections; // Required for Coroutines
+using System.Collections;
 
 public class PlayerCombat : MonoBehaviour, ICombatReceiver
 {
@@ -9,14 +9,13 @@ public class PlayerCombat : MonoBehaviour, ICombatReceiver
     public PlayerLocomotion movementScript;
     [SerializeField] Stats stats;
     
-    // Reference to the Event Script
     private CombatAnimationEvents animationEvents;
-    
     private RuntimeAnimatorController baseController;
     private WeaponDamage currentWeaponScript; 
 
     // States
     public bool isAttacking { get; private set; }
+    public bool isStunned { get; private set; } = false;
     public bool isHeavyAttacking { get; private set; } 
     private bool canCombo = false;      
     private bool inputQueued = false;   
@@ -29,16 +28,19 @@ public class PlayerCombat : MonoBehaviour, ICombatReceiver
     
     [Header("Block Settings")]
     public float blockCooldown = 0.5f; 
-    public float blockStartupTime = 0.1f; // Delay before block logic kicks in
+    public float blockStartupTime = 0.1f; 
     
     private float nextBlockTime = 0f;
-    private Coroutine activeBlockCoroutine; // To track and cancel the delay
+    private Coroutine activeBlockCoroutine; 
+    
+    private bool requireNewBlockPress = false; 
     
     [Header("Energy Settings")] 
     public float lightAttackCost = 10f;
     public float heavyAttackCost = 25f;
     
     private HealthScript healthScript;
+    private Coroutine activeStunCoroutine;
 
     void Awake()
     {
@@ -55,18 +57,13 @@ public class PlayerCombat : MonoBehaviour, ICombatReceiver
     {
         currentWeaponScript = newWeaponObject.GetComponent<WeaponDamage>();
 
-        if (animationEvents != null)
-        {
-            animationEvents.SetCurrentWeapon(currentWeaponScript);
-        }
+        if (animationEvents != null) animationEvents.SetCurrentWeapon(currentWeaponScript);
 
         if (animator == null) animator = GetComponent<Animator>(); 
         if (baseController == null) baseController = animator.runtimeAnimatorController;
 
-        if (overrideController != null)
-            animator.runtimeAnimatorController = overrideController;
-        else if (baseController != null)
-            animator.runtimeAnimatorController = baseController;
+        if (overrideController != null) animator.runtimeAnimatorController = overrideController;
+        else if (baseController != null) animator.runtimeAnimatorController = baseController;
 
         ResetCombatState();
     }
@@ -75,112 +72,103 @@ public class PlayerCombat : MonoBehaviour, ICombatReceiver
     {
         if (EventSystem.current != null && EventSystem.current.IsPointerOverGameObject()) return;
         
-        // Failsafe
         if (isAttacking && Time.time > lastAttackTime + maxAttackDuration) OnFinishAttack();
         
-        // --- 1. BLOCKING LOGIC ---
+        // --- 1. TRACK KEY RELEASES ALWAYS ---
+        bool isHoldingE = Input.GetKey(KeyCode.E);
+        
+        if (!isHoldingE)
+        {
+            requireNewBlockPress = false;
+        }
+
+        // --- 2. IRONCLAD STUN CHECK ---
+        if (isStunned) 
+        {
+            // Ruthlessly enforce the movement lock every single frame we are stunned
+            if (movementScript != null) movementScript.isStunned = true;
+            return; // EXIT HERE. Impossible for 'E' release to do anything else.
+        }
+        
+        // --- 3. BLOCKING LOGIC ---
         if (healthScript != null)
         {
-            if (Input.GetKeyDown(KeyCode.E) && !isAttacking)
+            bool isBlockingAnim = animator.GetBool("Blocking");
+
+            if (isHoldingE && !isAttacking && !requireNewBlockPress)
             {
-                if (Time.time >= nextBlockTime)
+                if (!isBlockingAnim && Time.time >= nextBlockTime)
                 {
-                    // Visuals START NOW
                     animator.SetBool("Blocking", true);
-                    if (movementScript != null) movementScript.isAttacking = true; // Stop moving
+                    if (movementScript != null) movementScript.isAttacking = true; 
                     
-                    // Logic STARTS LATER (Wait for animation)
                     if (activeBlockCoroutine != null) StopCoroutine(activeBlockCoroutine);
                     activeBlockCoroutine = StartCoroutine(EnableBlockRoutine());
                 }
             }
-            else if (Input.GetKeyUp(KeyCode.E))
+            else if (!isHoldingE && isBlockingAnim) 
             {
-                // Cancel the routine if we released E too fast
-                if (activeBlockCoroutine != null) StopCoroutine(activeBlockCoroutine);
-
-                // Stop Logic
-                healthScript.StopBlocking();
-                
-                // Stop Visuals
-                animator.SetBool("Blocking", false);
-                if (movementScript != null) movementScript.isAttacking = false; // Restore movement
-
+                ForceStopBlocking();
                 nextBlockTime = Time.time + blockCooldown;
             }
         }
         
-        // Dont attack while blocking!
         if (healthScript != null && healthScript.IsBlocking) return;
         
-        // --- 2. ATTACK LOGIC (With Energy Check) ---
+        // --- 4. ATTACK LOGIC ---
         if (Input.GetButtonDown("Fire1"))
         {
             if (Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl))
             {
-                // HEAVY ATTACK
                 if (!isAttacking && Time.time >= nextAttackTime) 
                 {
-                    // Check Energy Cost
-                    if (healthScript != null && healthScript.TrySpendEnergy(heavyAttackCost))
-                    {
-                        PerformHeavyAttack();
-                    }
-                    else
-                    {
-                        Debug.Log("Not enough energy for Heavy Attack!");
-                    }
+                    if (healthScript != null && healthScript.TrySpendEnergy(heavyAttackCost)) PerformHeavyAttack();
+                    else Debug.Log("Not enough energy for Heavy Attack!");
                 }
             }
             else
             {
-                // LIGHT ATTACK
                 if (isAttacking)
                 {
                     if (!isHeavyAttacking) inputQueued = true;
                 }
                 else if (Time.time >= nextAttackTime)
                 {
-                    // Check Energy Cost
                     if (healthScript != null && healthScript.TrySpendEnergy(lightAttackCost))
                     {
                         comboStep = 0;
                         PerformComboStep();
                     }
-                    else
-                    {
-                        Debug.Log("Out of Energy!");
-                    }
+                    else Debug.Log("Out of Energy!");
                 }
             }
         }
 
-        // COMBO QUEUE LOGIC
         if (inputQueued && canCombo)
         {
-            // We also charge energy for the next hit in the combo!
-            if (healthScript != null && healthScript.TrySpendEnergy(lightAttackCost))
-            {
-                PerformComboStep();
-            }
-            else
-            {
-                inputQueued = false; // Cancel combo if energy runs out mid-swing
-            }
+            if (healthScript != null && healthScript.TrySpendEnergy(lightAttackCost)) PerformComboStep();
+            else inputQueued = false; 
         }
     }
 
-    // --- Block Delay Routine ---
+    private void ForceStopBlocking()
+    {
+        if (activeBlockCoroutine != null) StopCoroutine(activeBlockCoroutine);
+        if (healthScript != null) healthScript.StopBlocking();
+        
+        animator.SetBool("Blocking", false);
+        
+        // Ensures we NEVER accidentally unlock movement if we are stunned
+        if (movementScript != null && !isStunned) 
+        {
+            movementScript.isAttacking = false; 
+        }
+    }
+
     IEnumerator EnableBlockRoutine()
     {
-        // Wait for the animation to actually raise the shield
         yield return new WaitForSeconds(0);
-        
-        // NOW turn on the actual blocking stats
-        if (healthScript != null)
-        {
-            healthScript.StartBlocking(); 
-        }
+        if (healthScript != null) healthScript.StartBlocking(); 
     }
 
     void LateUpdate()
@@ -221,7 +209,39 @@ public class PlayerCombat : MonoBehaviour, ICombatReceiver
             comboStep = 0; 
         }
     }
+    
+    public void BreakGuard()
+    {
+        if (isStunned) return; 
 
+        ForceStopBlocking();
+        
+        requireNewBlockPress = true; 
+        nextBlockTime = Time.time + 1.5f; 
+
+        animator.ResetTrigger("Attack");
+        animator.ResetTrigger("AttackCombo");
+        animator.ResetTrigger("HeavyAttack");
+        
+        animator.SetTrigger("Stun"); 
+        
+        isStunned = true; 
+        if (movementScript != null) movementScript.isStunned = true;
+
+        if (activeStunCoroutine != null) StopCoroutine(activeStunCoroutine);
+        activeStunCoroutine = StartCoroutine(StunTimerRoutine(1.5f)); 
+    }
+
+    private IEnumerator StunTimerRoutine(float duration)
+    {
+        yield return new WaitForSeconds(duration);
+        
+        isStunned = false; 
+        if (movementScript != null) movementScript.isStunned = false;
+        
+        ResetCombatState(); 
+    }
+    
     void PerformHeavyAttack()
     {
         isAttacking = true;
@@ -260,12 +280,30 @@ public class PlayerCombat : MonoBehaviour, ICombatReceiver
     
     public void OnInterrupted()
     {
+        if (isStunned) return; 
+
+        ForceStopBlocking();
+        
+        requireNewBlockPress = true;
+        nextBlockTime = Time.time + 0.5f; 
+
+        animator.ResetTrigger("Attack");
+        animator.ResetTrigger("AttackCombo");
+        animator.ResetTrigger("HeavyAttack");
+
         animator.SetTrigger("Recoil");
-        ResetCombatState();
+        
+        isStunned = true; 
+        if (movementScript != null) movementScript.isStunned = true;
+
+        if (activeStunCoroutine != null) StopCoroutine(activeStunCoroutine);
+        activeStunCoroutine = StartCoroutine(StunTimerRoutine(0.5f)); 
     }
 
-    private void ResetCombatState()
+    public void ResetCombatState()
     {
+        if (isStunned) return; 
+
         isAttacking = false;
         isHeavyAttacking = false;
         canCombo = false;
@@ -274,7 +312,13 @@ public class PlayerCombat : MonoBehaviour, ICombatReceiver
         
         animator.applyRootMotion = false; 
 
-        if (movementScript != null) movementScript.isAttacking = false;
+        if (movementScript != null)
+        {
+            if (animator != null && !animator.GetBool("Blocking")) 
+            {
+                movementScript.isAttacking = false;
+            }
+        }
         
         if (animationEvents != null) animationEvents.CloseDamageWindow();
     }

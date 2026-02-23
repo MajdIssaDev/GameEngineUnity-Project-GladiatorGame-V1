@@ -16,6 +16,7 @@ public class HealthScript : MonoBehaviour
     [Header("Energy System")]
     public float currentEnergy;
     public Slider energyHudSlider;
+    public PlayerCombat playerCombat;
     
     [Header("Block / Parry Settings")]
     public bool IsBlocking = false;
@@ -38,6 +39,7 @@ public class HealthScript : MonoBehaviour
         // Initialize Stats
         currentHealth = maxHealth;
         if (stats != null) currentEnergy = stats.maxEnergy;
+        if (transform.root.CompareTag("Player")) playerCombat = GetComponent<PlayerCombat>();
 
         enemyFloatingBar = GetComponentInChildren<EnemyHealthBar>();
         UpdateHealthUI();
@@ -60,7 +62,7 @@ public class HealthScript : MonoBehaviour
         // Regen is 80% slower while holding block
         float regenMult = IsBlocking ? 0.2f : 1.0f; 
         
-        if (!IsDead && currentEnergy < stats.maxEnergy)
+        if (!IsDead && currentEnergy < stats.maxEnergy && playerCombat && !playerCombat.isAttacking)
         {
             currentEnergy += (stats.energyRegenRate * regenMult) * Time.fixedDeltaTime;
             if (currentEnergy > stats.maxEnergy) currentEnergy = stats.maxEnergy;
@@ -115,7 +117,7 @@ public class HealthScript : MonoBehaviour
                     animator.SetBool("Blocking", false);
                     
                     // YOU get recoiled/stunned because you failed
-                    animator.SetTrigger("Recoil"); 
+                    animator.SetTrigger("Stun"); 
                     Debug.Log("Guard Broken!");
                 }
             }

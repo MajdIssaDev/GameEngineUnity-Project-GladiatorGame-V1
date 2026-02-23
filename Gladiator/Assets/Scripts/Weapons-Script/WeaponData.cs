@@ -16,10 +16,10 @@ public class WeaponData : ScriptableObject
     public AnimatorOverrideController animatorOverride; 
     
     [Header("Audio")]
-    public AudioClip[] hitSounds; // Flesh hits
+    public AudioClip[] hitSounds; //Flesh hits
     public AudioClip swingSound;
     
-    // --- NEW: Defense Sounds ---
-    public AudioClip blockSound;  // Metal Clank
-    public AudioClip parrySound;  // High Pitch Ding
+    //--- NEW: Defense Sounds ---
+    public AudioClip blockSound;  //Metal Clank
+    public AudioClip parrySound;  //High Pitch Ding
 }

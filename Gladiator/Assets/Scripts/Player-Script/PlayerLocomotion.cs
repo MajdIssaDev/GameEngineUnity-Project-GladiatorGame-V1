@@ -36,6 +36,7 @@ public class PlayerLocomotion : MonoBehaviour
 
     [HideInInspector] public bool isAttacking = false; 
     [HideInInspector] public bool isRolling = false;
+    [HideInInspector] public bool isStunned = false; // --- NEW: Stun Flag ---
 
     private Vector3 verticalVelocity;
     private float currentSpeed;
@@ -57,22 +58,19 @@ public class PlayerLocomotion : MonoBehaviour
     void Update()
     {
         // 1. GRAVITY
-        // Only calculate gravity if we are NOT attacking.
-        // During attacks, we trust the animation's Y movement completely.
-        CharacterController cc = GetComponent<CharacterController>();
-        if (cc != null && cc.enabled == false) return;
+        if (characterController != null && !characterController.enabled) return;
+        
+        // We only disable gravity for attacks. If we are stunned, we still want to fall normally!
         if (!isAttacking)
         {
             if (characterController.isGrounded && verticalVelocity.y < 0)
             {
-                verticalVelocity.y = -2f; // Stick to ground
+                verticalVelocity.y = -2f; 
             }
             verticalVelocity.y += gravity * Time.deltaTime;
         }
         else
         {
-            // Reset velocity during attacks so it doesn't build up a massive 
-            // downward force that hits immediately after the attack ends.
             verticalVelocity.y = 0;
         }
 
@@ -85,7 +83,8 @@ public class PlayerLocomotion : MonoBehaviour
         // 3. ROOT MOTION TOGGLE
         if (animator != null)
         {
-            bool shouldUseRootMotion = isRolling || isAttacking;
+            // --- UPDATED: Allow Root motion if stunned so the animation handles positional shifts ---
+            bool shouldUseRootMotion = isRolling || isAttacking || isStunned;
             if (animator.applyRootMotion != shouldUseRootMotion)
             {
                 animator.applyRootMotion = shouldUseRootMotion;
@@ -97,9 +96,9 @@ public class PlayerLocomotion : MonoBehaviour
         {
             HandleRollingState();
         }
-        else if (isAttacking)
+        else if (isAttacking || isStunned) // --- UPDATED: Stop WASD movement if stunned ---
         {
-            HandleAttackState(); 
+            HandleActionState(); // Renamed for clarity since it handles both attacks and stuns
         }
         else
         {
@@ -109,7 +108,8 @@ public class PlayerLocomotion : MonoBehaviour
 
     void TryStartRoll()
     {
-        if (isAttacking) return;
+        // --- UPDATED: Prevent rolling while stunned ---
+        if (isAttacking || isStunned) return; 
         if (isRolling) return;
         if (Time.time < lastRollTime + rollCooldown) return;
 
@@ -154,8 +154,10 @@ public class PlayerLocomotion : MonoBehaviour
         }
     }
 
-    void HandleAttackState()
+    // Renamed from HandleAttackState to HandleActionState
+    void HandleActionState()
     {
+        // Zeroes out the animator blend tree so the character doesn't try to walk in place
         if (animator != null)
         {
             animator.SetFloat("Speed", 0f);
@@ -166,15 +168,12 @@ public class PlayerLocomotion : MonoBehaviour
 
     void OnAnimatorMove()
     {
-        if ((isRolling || isAttacking) && animator != null)
+        // --- UPDATED: Allow Animator to move the character during stun ---
+        if ((isRolling || isAttacking || isStunned) && animator != null)
         {
-            // deltaPosition is the "Change in position" for this frame derived from the animation
             Vector3 velocity = animator.deltaPosition;
             
-            // --- FIX ---
-            // Only apply manual gravity if we are ROLLING. 
-            // If we are ATTACKING, we assume the animation handles the Y-axis (Jump attacks).
-            // Adding gravity to a Jump Attack animation will cancel out the jump.
+            // Only apply manual gravity if we are NOT attacking (so rolls and stuns get gravity)
             if (!isAttacking) 
             {
                 velocity.y += verticalVelocity.y * Time.deltaTime; 
@@ -235,8 +234,9 @@ public class PlayerLocomotion : MonoBehaviour
             }
         }
 
-        Vector3 finalMove = (moveDirection * currentSpeed) + verticalVelocity;
-        characterController.Move(finalMove * Time.deltaTime);
+        Vector3 horizontalMove = moveDirection * currentSpeed * Time.deltaTime;
+        Vector3 finalMove = horizontalMove + (verticalVelocity * Time.deltaTime);
+        characterController.Move(finalMove);
 
         if (animator != null)
         {

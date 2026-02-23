@@ -5,7 +5,7 @@ using System.Collections;
 
 public class ShopSlot : MonoBehaviour
 {
-    // We hide this from Inspector so you don't think you need to set it manually anymore
+    //We hide this from Inspector so you don't think you need to set it manually anymore
     [HideInInspector] public WeaponData weaponToSell; 
     
     [Header("UI References")]
@@ -19,17 +19,17 @@ public class ShopSlot : MonoBehaviour
     public AudioClip UnableBuy;
     
     [Header("Feedback")]
-    public Color errorColor = Color.red; // The color to flash
-    public float flashDuration = 0.15f;  // How long it stays red
+    public Color errorColor = Color.red; //The color to flash
+    public float flashDuration = 0.15f;  //How long it stays red
 
-    private ColorBlock originalColors;   // To remember what the button looked like before
+    private ColorBlock originalColors;   //To remember what the button looked like before
     private Coroutine currentFlashRoutine;
 
-    // --- 1. SETUP FUNCTION (Called by ShopPopulator) ---
+    //--- 1. SETUP FUNCTION (Called by ShopPopulator) ---
     
     private void Awake()
     {
-        // Save the button's original colors as soon as the game starts
+        //Remember what the button color was so we can reset it after it flashes red
         if (myButton != null)
         {
             originalColors = myButton.colors;
@@ -42,23 +42,23 @@ public class ShopSlot : MonoBehaviour
 
         if (weaponToSell != null)
         {
-            // Update Visuals immediately
+            //Link this slot to a speceific weaapon and update visuals immediately
             if (nameText != null) nameText.text = weaponToSell.weaponName;
             
-            // Check prices/owned status immediately
+            //Check prices/owned status immediately
             UpdateButtonState();
         }
     }
 
-    // --- 2. EVENT SUBSCRIPTION ---
+    //--- 2. EVENT SUBSCRIPTION ---
     private void OnEnable()
     {
-        // Subscribe to updates (Using OnEnable ensures it works if you close/open the shop)
+        //Subscribe to updates (Using OnEnable ensures it works if you close/open the shop)
         if (GameManager.Instance != null)
         {
             GameManager.Instance.OnShopUpdated += UpdateButtonState;
             
-            // If we are enabling the panel, force a refresh
+            //If we are enabling the panel, force a refresh
             UpdateButtonState();
         }
     }
@@ -71,10 +71,10 @@ public class ShopSlot : MonoBehaviour
         }
     }
 
-    // --- 3. STATE LOGIC ---
+    //--- 3. STATE LOGIC ---
     void UpdateButtonState()
     {
-        // Safety check: If Populator hasn't run yet, or GameManager is missing, stop.
+        //Safety check: If Populator hasn't run yet, or GameManager is missing, stop
         if (weaponToSell == null || GameManager.Instance == null) return;
 
         bool isOwned = GameManager.Instance.ownedWeapons.Contains(weaponToSell);

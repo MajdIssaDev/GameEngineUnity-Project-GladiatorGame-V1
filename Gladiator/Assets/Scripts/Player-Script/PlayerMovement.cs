@@ -21,7 +21,7 @@ public class PlayerMovement : MonoBehaviour
     public Transform cameraTransform;
     public PlayerLockOn lockOn;
 
-    // --- FLAGS ---
+    //--- FLAGS ---
     [HideInInspector] public bool isAttacking = false;
     [HideInInspector] public bool isRolling = false;
 
@@ -29,7 +29,7 @@ public class PlayerMovement : MonoBehaviour
     private Vector3 verticalVelocity;
     private float currentSpeed;
     
-    // Roll Timers
+    //Roll Timers
     private float rollTimer;
     private float lastRollTime;
     private Vector3 fixedRollDirection;
@@ -46,20 +46,20 @@ public class PlayerMovement : MonoBehaviour
 
     void Update()
     {
-        // 1. GRAVITY (Always calculate vertical force)
+        //Keep the player on the ground and apply gravity every frame
         if (controller.isGrounded && verticalVelocity.y < 0)
         {
             verticalVelocity.y = -2f;
         }
         verticalVelocity.y += gravity * Time.deltaTime;
 
-        // 2. CHECK ROLL INPUT
+        //Watch for the space bar to start a dodge roll
         if (Input.GetKeyDown(KeyCode.Space))
         {
             TryStartRoll();
         }
 
-        // 3. EXECUTE MOVEMENT
+        //Decide if we are moving normally or currently rolling
         if (isRolling)
         {
             HandleRollingPhysics();
@@ -72,7 +72,7 @@ public class PlayerMovement : MonoBehaviour
 
     void TryStartRoll()
     {
-        // Debug checks
+        //Roll only if we are not on the ground and not already busy
         if (!controller.isGrounded) { Debug.Log("Can't roll: In Air"); return; }
         if (isAttacking) { Debug.Log("Can't roll: Attacking"); return; }
         if (isRolling) { return; }
@@ -85,10 +85,10 @@ public class PlayerMovement : MonoBehaviour
         rollTimer = rollDuration;
         lastRollTime = Time.time;
         
-        // Trigger Animation
+        //Trigger Animation
         if (animator != null) animator.SetTrigger("Roll");
 
-        // Calculate Roll Direction (Snap to camera or input)
+        //Figure out which way to roll based on the camera and WASD keys
         float h = Input.GetAxisRaw("Horizontal");
         float v = Input.GetAxisRaw("Vertical");
         Vector3 inputDir = new Vector3(h, 0f, v).normalized;
@@ -112,10 +112,10 @@ public class PlayerMovement : MonoBehaviour
 
         if (rollTimer <= 0)
         {
-            // Stop Rolling
+            //End the roll ocne the timer runs out
             isRolling = false;
             
-            // Speed Recovery Logic
+            //Decide the player's speed right after the roll finishes
             float h = Input.GetAxisRaw("Horizontal");
             float v = Input.GetAxisRaw("Vertical");
             bool tryingToMove = new Vector3(h, 0, v).magnitude > 0.1f;
@@ -128,7 +128,7 @@ public class PlayerMovement : MonoBehaviour
             return;
         }
 
-        // Move Player using the fixed direction + Gravity
+        //Apply the actual movment and gravity while rolling
         Vector3 finalMove = (fixedRollDirection * rollSpeed) + verticalVelocity;
         controller.Move(finalMove * Time.deltaTime);
     }
@@ -149,7 +149,7 @@ public class PlayerMovement : MonoBehaviour
 
         currentSpeed = Mathf.MoveTowards(currentSpeed, targetSpeed, accel * Time.deltaTime);
 
-        // Rotation
+        //Rotate the player toward the movment direction or the locked-on enemy
         if (!isAttacking && wantsToMove)
         {
             if (lockOn != null && lockOn.CurrentTarget != null)
@@ -166,16 +166,18 @@ public class PlayerMovement : MonoBehaviour
             }
         }
 
-        // Movement
+        //Calculate the final movment direction
         Vector3 moveDir = Vector3.zero;
         if (currentSpeed > 0.1f)
         {
+            //If we are locked on an enemy, move relative to them
              if (lockOn != null && lockOn.CurrentTarget != null)
              {
                  moveDir = (transform.forward * v + transform.right * h).normalized;
              }
              else
              {
+                 //Else just move in the dicretion the player is facing
                  moveDir = transform.forward;
              }
         }

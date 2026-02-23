@@ -3,6 +3,9 @@ using System.Collections.Generic;
 
 public class HitReaction : MonoBehaviour
 {
+    [Header("References")]
+    public Animator animator; // --- NEW: Added Animator Reference ---
+
     [Header("Setup")]
     public List<Transform> bodyParts = new List<Transform>(); 
 
@@ -16,8 +19,8 @@ public class HitReaction : MonoBehaviour
 
     [Header("VFX")]
     public GameObject bloodVfxPrefab;
-    public GameObject sparkVfxPrefab; // Standard Block
-    public GameObject parryVfxPrefab; // NEW: Brighter Parry Effect
+    public GameObject sparkVfxPrefab; 
+    public GameObject parryVfxPrefab; 
     public bool snapVfxToBone = true;
 
     [Header("Physics Settings")]
@@ -35,9 +38,14 @@ public class HitReaction : MonoBehaviour
 
     private Dictionary<Transform, BoneFlinchState> activeFlinches = new Dictionary<Transform, BoneFlinchState>();
 
+    void Start()
+    {
+        // --- NEW: Auto-grab Animator if not assigned ---
+        if (animator == null) animator = GetComponentInParent<Animator>();
+    }
+
     void LateUpdate()
     {
-        // ... (Existing LateUpdate logic remains unchanged) ...
         List<Transform> bonesToRemove = new List<Transform>();
 
         foreach (var kvp in activeFlinches)
@@ -66,13 +74,27 @@ public class HitReaction : MonoBehaviour
         foreach (var b in bonesToRemove) activeFlinches.Remove(b);
     }
 
-    // --- NEW VFX METHODS ---
+    // --- UPDATED VFX METHODS ---
 
     public void PlayBlockVFX(Vector3 hitPoint, Vector3 attackDirection)
     {
         if (sparkVfxPrefab) 
         {
             Instantiate(sparkVfxPrefab, hitPoint, Quaternion.LookRotation(-attackDirection));
+        }
+
+        // --- NEW: ANTI-QUEUING BLOCK ANIMATION LOGIC ---
+        if (animator != null)
+        {
+            AnimatorStateInfo stateInfo = animator.GetCurrentAnimatorStateInfo(0);
+            
+            // Check if we are NOT already playing the block reaction.
+            // NOTE: Change "BlockReaction" to the exact name of the state in your Animator!
+            if (!stateInfo.IsName("BlockReaction")) 
+            {
+                animator.ResetTrigger("Blocked"); // Clear phantom triggers
+                animator.SetTrigger("Blocked");   // Trigger the hit
+            }
         }
     }
 
@@ -84,8 +106,14 @@ public class HitReaction : MonoBehaviour
         }
         else if (sparkVfxPrefab)
         {
-            // Fallback to sparks if no parry VFX assigned
             Instantiate(sparkVfxPrefab, hitPoint, Quaternion.LookRotation(-attackDirection));
+        }
+
+        // --- NEW: FORCE PARRY ANIMATION LOGIC ---
+        if (animator != null)
+        {
+            animator.ResetTrigger("Blocked");
+            animator.SetTrigger("Blocked");
         }
     }
 
@@ -128,9 +156,9 @@ public class HitReaction : MonoBehaviour
             state.timer = 0f;
             state.isImpactPhase = true;
         }
+        
     }
     
-    // ... (CalculateTargetRotation and GetClosestBone remain unchanged) ...
     Quaternion CalculateTargetRotation(Transform bone, Vector3 attackDirection)
     {
         Vector3 impactDir = attackDirection.normalized;
