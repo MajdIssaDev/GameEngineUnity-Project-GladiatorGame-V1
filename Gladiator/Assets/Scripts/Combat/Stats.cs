@@ -14,7 +14,7 @@ public class Stats : MonoBehaviour
     public float regenSpeed = 1;   
     public float attackSpeed = 1;  
     
-    // --- NEW: Energy Stat ---
+    // --- Energy Stat ---
     public float maxEnergy = 100f; 
     public float energyRegenRate = 10f; // Energy per second
     

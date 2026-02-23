@@ -214,7 +214,7 @@ public class GameManager : MonoBehaviour
                 pHealth.playerHudSlider = playerHealthBar; 
                 pHealth.setCurrentHealth(pHealth.getMaxHealth());
                 pHealth.energyHudSlider = playerEnergyBar;
-                pHealth.currentEnergy = pHealth.stats.maxEnergy;
+                pHealth.ResetEnergyToMax();
             }
 
             MainCamera.GetComponent<SoulsCamera>().enabled = true;
@@ -297,6 +297,7 @@ public class GameManager : MonoBehaviour
             pHealth.playerHudSlider = playerHealthBar; 
             pHealth.setCurrentHealth(pHealth.getMaxHealth());
             pHealth.energyHudSlider = playerEnergyBar;
+            pHealth.ResetEnergyToMax();
         }
     }
 

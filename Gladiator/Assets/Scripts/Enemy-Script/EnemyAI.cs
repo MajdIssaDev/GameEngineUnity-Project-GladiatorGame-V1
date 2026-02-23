@@ -19,10 +19,10 @@ public class EnemyAI : MonoBehaviour
     public float strafeDistance = 8.0f; 
     public float minCrowdDistance = 2.0f; 
 
-    [Header("Dodge / Reposition Logic")]
+    [Header("Reposition Logic")]
     public Vector2 waitInterval = new Vector2(2.0f, 5.0f); 
     public Vector2 moveDuration = new Vector2(0.5f, 1.2f); 
-    [Range(0,100)] public float dodgeChance = 30f; 
+    // Removed dodgeChance
 
     // Internal State
     private NavMeshAgent agent;
@@ -33,8 +33,6 @@ public class EnemyAI : MonoBehaviour
     private float currentStrafeDir = 0f; 
     private bool inStrafeRange = false;
     
-    public bool isDodging { get; private set; } = false;
-
     // Track previous frame to detect when attack STARTS or ENDS
     private bool lastAttackState = false;
 
@@ -43,7 +41,6 @@ public class EnemyAI : MonoBehaviour
     private int animIsStrafingID;
     private int animInputXID;
     private int animInputYID;
-    private int animDodgeTriggerID; 
 
     void Start()
     {
@@ -61,39 +58,27 @@ public class EnemyAI : MonoBehaviour
         animIsStrafingID = Animator.StringToHash("isStrafing");
         animInputXID = Animator.StringToHash("InputX");
         animInputYID = Animator.StringToHash("InputY");
-        animDodgeTriggerID = Animator.StringToHash("Dodge"); 
 
         agent.avoidancePriority = Random.Range(30, 70);
         actionTimer = Random.Range(waitInterval.x, waitInterval.y);
     }
 
-void Update()
+    void Update()
     {
         if (agent == null || !agent.isActiveAndEnabled) return;
         if (playerTarget == null) return;
 
-        // 1. IF DODGING, DO NOTHING
-        if (isDodging) return;
-
         // ================================================================
         //  A. STATE CHANGE DETECTOR (Reset Position on Finish / Interrupt)
-        //     (MOVED TO TOP: Runs even if Stunned)
         // ================================================================
         if (combatScript.isAttacking != lastAttackState)
         {
             lastAttackState = combatScript.isAttacking;
 
-            // IF ATTACK JUST FINISHED (or was INTERRUPTED by Block/Parry)
             if (!combatScript.isAttacking)
             {
-                // 1. Turn off Root Motion (Cleanup)
                 anim.applyRootMotion = false;
-
-                // 2. Snap Agent to the new position
-                // (The animation moved the Transform, we must tell the Agent "We are here now")
                 agent.nextPosition = transform.position;
-
-                // 3. Re-enable Agent Control
                 agent.updatePosition = true;
                 agent.updateRotation = true;
                 agent.isStopped = false; 
@@ -101,33 +86,28 @@ void Update()
         }
 
         // ================================================================
-        //  B. STUN CHECK (Stops AI logic while stunned)
+        //  B. STUN CHECK
         // ================================================================
         if (combatScript.isStunned) 
         {
-            // Force stop the agent so they don't slide while playing the stun animation
             if (!agent.isStopped) 
             {
                 agent.isStopped = true;
                 agent.velocity = Vector3.zero;
-                agent.ResetPath(); // Forget where you were going
+                agent.ResetPath(); 
             }
-            return; // Do nothing else while stunned
+            return; 
         }
 
         // ================================================================
-        //  C. ATTACK BEHAVIOR (Active)
+        //  C. ATTACK BEHAVIOR
         // ================================================================
         if (combatScript.isAttacking)
         {
-            // 1. Enable Root Motion so the animation moves the enemy
             anim.applyRootMotion = true;
-
-            // 2. Disable Agent updates so it doesn't fight the animation
             agent.updatePosition = false; 
             agent.updateRotation = false;
             
-            // 3. Stop the internal pathfinding velocity
             if (agent.isOnNavMesh) 
             {
                 agent.isStopped = true;
@@ -135,12 +115,10 @@ void Update()
             }
 
             anim.SetFloat(animSpeedID, 0); 
-            return; // Stop here, don't run movement logic
+            return; 
         }
 
         distanceToPlayer = Vector3.Distance(transform.position, playerTarget.position);
-
-        // ... (Rest of Movement/Strafe logic remains exactly the same) ...
 
         // 3. TRY ATTACK
         if (combatScript.CanAttack(distanceToPlayer))
@@ -170,8 +148,6 @@ void Update()
         }
         anim.SetFloat(animSpeedID, currentSpeed, 0.1f, Time.deltaTime);
     }
-
-    // ... (Rest of the script remains exactly the same) ...
 
     void HandleChasing()
     {
@@ -204,34 +180,12 @@ void Update()
             anim.SetFloat(animInputXID, 0f, 0.2f, Time.deltaTime);
             anim.SetFloat(animInputYID, 0f);
 
+            // --- THE FIX: Enemies now ONLY reposition, they never dodge ---
             if (actionTimer <= 0) 
             {
-                float rollDice = Random.Range(0f, 100f);
-                if (rollDice < dodgeChance) PerformDodge();
-                else StartRepositioning();
+                StartRepositioning();
             }
         }
-    }
-
-    public void PerformDodge()
-    {
-        if (isDodging) return;
-        isDodging = true;
-        anim.applyRootMotion = true;
-        anim.SetTrigger("Roll");
-        agent.updatePosition = false; 
-        agent.updateRotation = false;
-        agent.isStopped = true;
-    }
-
-    public void OnDodgeFinished()
-    {
-        isDodging = false;
-        anim.applyRootMotion = false;
-        agent.nextPosition = transform.position; 
-        agent.updatePosition = true; 
-        agent.updateRotation = true;
-        actionTimer = Random.Range(waitInterval.x, waitInterval.y);
     }
 
     void StartRepositioning()

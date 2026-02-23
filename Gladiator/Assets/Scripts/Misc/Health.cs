@@ -285,4 +285,13 @@ public class HealthScript : MonoBehaviour
     public void setCurrentHealth(float val) { currentHealth = val; UpdateHealthUI(); }
     public void EnableIFrames() { isInvincible = true; }
     public void DisableIFrames() { isInvincible = false; }
+    
+    public void ResetEnergyToMax() 
+    { 
+        if (stats != null) 
+        {
+            currentEnergy = stats.maxEnergy; 
+            UpdateEnergyUI(); 
+        }
+    }
 }
