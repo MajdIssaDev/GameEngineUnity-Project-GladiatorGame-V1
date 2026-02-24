@@ -7,10 +7,8 @@ public class PlayerLockOn : MonoBehaviour
     public LayerMask enemyLayer;
     public float detectionRadius = 20f;
     public float maxLockOnDistance = 25f;
-    public KeyCode lockKey = KeyCode.Q;
 
     public Transform CurrentTarget { get; private set; }
-
     private Camera mainCam;
 
     void Start()
@@ -18,24 +16,39 @@ public class PlayerLockOn : MonoBehaviour
         mainCam = Camera.main;
     }
 
+    // --- NEW: Subscribe to the InputManager Event ---
+    void OnEnable()
+    {
+        if (InputManager.Instance != null)
+        {
+            InputManager.Instance.OnLockOnPressed += HandleLockOnToggle;
+        }
+    }
+
+    // --- NEW: Always unsubscribe to prevent memory leaks ---
+    void OnDisable()
+    {
+        if (InputManager.Instance != null)
+        {
+            InputManager.Instance.OnLockOnPressed -= HandleLockOnToggle;
+        }
+    }
+
+    // --- NEW: The method called by the event ---
+    private void HandleLockOnToggle()
+    {
+        if (CurrentTarget != null)
+            Unlock(); 
+        else
+            FindTarget(); 
+    }
+
     void Update()
     {
-        // 1. Input to Toggle Lock
-        if (Input.GetKeyDown(lockKey))
-        {
-            if (CurrentTarget != null)
-                Unlock(); // Press Q to cancel
-            else
-                FindTarget(); // Press Q to find
-        }
-
-        // 2. Break lock if target is dead, disabled, or too far
+        // Break lock if target is dead, disabled, or too far
         if (CurrentTarget != null)
         {
             float dist = Vector3.Distance(transform.position, CurrentTarget.position);
-            
-            // FIX 2: Check if the target's layer is STILL part of the enemyLayer mask
-            // If you change the enemy's layer to "Default" when they die, this will trigger the unlock.
             bool isStillEnemyLayer = (enemyLayer.value & (1 << CurrentTarget.gameObject.layer)) > 0;
 
             if (!CurrentTarget.gameObject.activeInHierarchy || !isStillEnemyLayer || dist > maxLockOnDistance)
@@ -54,10 +67,7 @@ public class PlayerLockOn : MonoBehaviour
 
         foreach (Collider enemy in enemies)
         {
-            // FIX 1: Use .root to ensure we target the main enemy parent, 
-            // not a floating child UI collider or head hitbox.
             Transform rootEnemy = enemy.transform.root;
-
             Vector3 directionToEnemy = rootEnemy.position - transform.position;
             float dSqrToTarget = directionToEnemy.sqrMagnitude;
             

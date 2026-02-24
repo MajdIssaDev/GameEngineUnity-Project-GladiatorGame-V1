@@ -10,12 +10,10 @@ public class HealthScript : MonoBehaviour
     public Stats stats;
 
     [Header("UI References")]
-    public Slider playerHudSlider; // Player UI
     [SerializeField] private EnemyHealthBar enemyFloatingBar; // Enemy UI
 
     [Header("Energy System")]
     public float currentEnergy;
-    public Slider energyHudSlider;
     public PlayerCombat playerCombat;
     
     [Header("Block / Parry Settings")]
@@ -176,17 +174,19 @@ public class HealthScript : MonoBehaviour
     // --- UI UPDATES ---
     private void UpdateEnergyUI()
     {
-        if (energyHudSlider != null && stats != null)
+        // Add a check so ONLY the Player updates the global HUD
+        if (gameObject.CompareTag("Player") && stats != null && UIManager.Instance != null)
         {
-            energyHudSlider.value = currentEnergy / stats.maxEnergy;
+            UIManager.Instance.UpdateEnergy(currentEnergy, stats.maxEnergy);
         }
     }
 
     private void UpdateHealthUI()
     {
-        if (playerHudSlider != null)
+        // Add a check so ONLY the Player updates the global HUD
+        if (gameObject.CompareTag("Player") && UIManager.Instance != null)
         {
-            playerHudSlider.value = currentHealth / maxHealth;
+            UIManager.Instance.UpdateHealth(currentHealth, maxHealth);
         }
     }
 

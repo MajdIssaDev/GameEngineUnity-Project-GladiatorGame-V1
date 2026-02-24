@@ -63,38 +63,36 @@ public class SoulsCamera : MonoBehaviour
         if (isLocked)
         {
             // --- LOCKED MODE ---
-            // 1. Identify where we want to look (Enemy + Vertical Bias)
             Vector3 targetCenter = lockOnScript.CurrentTarget.position;
             targetCenter.y += verticalAimBias;
 
             Vector3 aimDir = (targetCenter - transform.position).normalized;
             Quaternion targetRot = Quaternion.LookRotation(aimDir);
             
-            // 2. Smoothly rotate the transform towards that target
             transform.rotation = Quaternion.Slerp(transform.rotation, targetRot, rotationSpeed * Time.deltaTime);
 
-            // 3. CRITICAL FIX: Sync the internal variables to the NEW actual rotation
-            // This ensures that when we unlock, the "Orbit Logic" starts exactly where we are now.
             Vector3 currentEuler = transform.eulerAngles;
             currentX = currentEuler.y;
             currentY = NormalizeAngle(currentEuler.x);
 
-            // 4. Kill velocity so momentum doesn't "fling" the camera when we unlock
             xVelocity = 0;
             yVelocity = 0;
         }
         else
         {
             // --- FREE MODE ---
-            // Standard Orbit Logic
-            float targetX = currentX + Input.GetAxis("Mouse X") * mouseSensitivity;
-            float targetY = currentY - Input.GetAxis("Mouse Y") * mouseSensitivity;
+            // --- NEW: Using InputManager for Mouse Input ---
+            float mouseX = InputManager.Instance != null ? InputManager.Instance.MouseInput.x : 0f;
+            float mouseY = InputManager.Instance != null ? InputManager.Instance.MouseInput.y : 0f;
+
+            float targetX = currentX + mouseX * mouseSensitivity;
+            float targetY = currentY - mouseY * mouseSensitivity;
 
             // Clamp Vertical Look
             targetY = Mathf.Clamp(targetY, -50, 80);
 
             // Smooth Damp
-            currentX = Mathf.SmoothDampAngle(currentX, targetX, ref xVelocity, 0f); // 0f = Instant mouse response
+            currentX = Mathf.SmoothDampAngle(currentX, targetX, ref xVelocity, 0f); 
             currentY = Mathf.SmoothDampAngle(currentY, targetY, ref yVelocity, 0f);
 
             // Apply rotation from the calculated angles
@@ -104,8 +102,6 @@ public class SoulsCamera : MonoBehaviour
         // ---------------------------------------------------------
         // 2. CALCULATE POSITION (Always based on currentX/Y)
         // ---------------------------------------------------------
-        // Since we synced currentX/Y in the Locked block above, this 
-        // position calculation will naturally follow the locked view.
         Quaternion orbitalRotation = Quaternion.Euler(currentY, currentX, 0);
 
         Vector3 camRight = orbitalRotation * Vector3.right;
@@ -137,7 +133,6 @@ public class SoulsCamera : MonoBehaviour
         transform.position = focusPoint + (camBack * currentDistance) + finalOffset;
     }
 
-    // Convert 0-360 angles to -180 to 180 so clamps work correctly
     private float NormalizeAngle(float angle)
     { 
         angle %= 360;
@@ -148,15 +143,12 @@ public class SoulsCamera : MonoBehaviour
     public void SetPlayerTarget(GameObject newPlayer)
     {
         playerTransform = newPlayer.transform;
-        
-        // Auto-find the lock-on script on the new player
         lockOnScript = newPlayer.GetComponent<PlayerLockOn>();
 
-        // Optional: Snap camera to look at player's back immediately
         if (playerTransform != null)
         {
             currentX = playerTransform.eulerAngles.y;
-            currentY = 20f; // Default slightly down angle
+            currentY = 20f; 
         }
     }
 }

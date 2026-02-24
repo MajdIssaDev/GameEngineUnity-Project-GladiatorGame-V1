@@ -89,7 +89,6 @@ public class HitReaction : MonoBehaviour
             AnimatorStateInfo stateInfo = animator.GetCurrentAnimatorStateInfo(0);
             
             // Check if we are NOT already playing the block reaction.
-            // NOTE: Change "BlockReaction" to the exact name of the state in your Animator!
             if (!stateInfo.IsName("BlockReaction")) 
             {
                 animator.ResetTrigger("Blocked"); // Clear phantom triggers
@@ -104,12 +103,7 @@ public class HitReaction : MonoBehaviour
         {
             Instantiate(parryVfxPrefab, hitPoint, Quaternion.LookRotation(-attackDirection));
         }
-        else if (sparkVfxPrefab)
-        {
-            Instantiate(sparkVfxPrefab, hitPoint, Quaternion.LookRotation(-attackDirection));
-        }
 
-        // --- NEW: FORCE PARRY ANIMATION LOGIC ---
         if (animator != null)
         {
             animator.ResetTrigger("Blocked");

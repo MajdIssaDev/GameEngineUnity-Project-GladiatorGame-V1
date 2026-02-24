@@ -15,16 +15,35 @@ public class TargetingSystem : MonoBehaviour
         cam = Camera.main;
     }
 
-    void Update() {
-        // Toggle Lock-on with Q
-        if (Input.GetKeyDown(KeyCode.Q)) {
-            if (currentTarget == null) {
-                AssignTarget();
-            } else {
-                Unlock();
-            }
+    // --- NEW: Subscribe to the Lock-on event ---
+    void OnEnable()
+    {
+        if (InputManager.Instance != null)
+        {
+            InputManager.Instance.OnLockOnPressed += HandleTargetingInput;
         }
     }
+
+    // --- NEW: Unsubscribe from the Lock-on event ---
+    void OnDisable()
+    {
+        if (InputManager.Instance != null)
+        {
+            InputManager.Instance.OnLockOnPressed -= HandleTargetingInput;
+        }
+    }
+
+    // --- NEW: Handler method replacing the Update check ---
+    private void HandleTargetingInput()
+    {
+        if (currentTarget == null) {
+            AssignTarget();
+        } else {
+            Unlock();
+        }
+    }
+
+    // Notice we completely deleted the Update() method!
 
     void AssignTarget() {
         // 1. Find all colliders in range

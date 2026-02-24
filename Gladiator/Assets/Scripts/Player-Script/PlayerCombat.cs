@@ -53,6 +53,24 @@ public class PlayerCombat : MonoBehaviour, ICombatReceiver
         isAttacking = false;
     }
 
+    // --- NEW: Subscribe to the Attack event ---
+    void OnEnable()
+    {
+        if (InputManager.Instance != null)
+        {
+            InputManager.Instance.OnAttackPressed += HandleAttackInput;
+        }
+    }
+
+    // --- NEW: Unsubscribe from the Attack event ---
+    void OnDisable()
+    {
+        if (InputManager.Instance != null)
+        {
+            InputManager.Instance.OnAttackPressed -= HandleAttackInput;
+        }
+    }
+
     public void EquipNewWeapon(GameObject newWeaponObject, AnimatorOverrideController overrideController)
     {
         currentWeaponScript = newWeaponObject.GetComponent<WeaponDamage>();
@@ -70,14 +88,16 @@ public class PlayerCombat : MonoBehaviour, ICombatReceiver
     
     void Update()
     {
+        // Don't process combat inputs if clicking on UI
         if (EventSystem.current != null && EventSystem.current.IsPointerOverGameObject()) return;
         
         if (isAttacking && Time.time > lastAttackTime + maxAttackDuration) OnFinishAttack();
         
         // --- 1. TRACK KEY RELEASES ALWAYS ---
-        bool isHoldingE = Input.GetKey(KeyCode.E);
+        // --- NEW: Using InputManager for continuous hold checks ---
+        bool isHoldingBlock = InputManager.Instance != null && InputManager.Instance.IsBlocking;
         
-        if (!isHoldingE)
+        if (!isHoldingBlock)
         {
             requireNewBlockPress = false;
         }
@@ -87,7 +107,7 @@ public class PlayerCombat : MonoBehaviour, ICombatReceiver
         {
             // Ruthlessly enforce the movement lock every single frame we are stunned
             if (movementScript != null) movementScript.isStunned = true;
-            return; // EXIT HERE. Impossible for 'E' release to do anything else.
+            return; // EXIT HERE. Impossible for block release to do anything else.
         }
         
         // --- 3. BLOCKING LOGIC ---
@@ -95,7 +115,7 @@ public class PlayerCombat : MonoBehaviour, ICombatReceiver
         {
             bool isBlockingAnim = animator.GetBool("Blocking");
 
-            if (isHoldingE && !isAttacking && !requireNewBlockPress)
+            if (isHoldingBlock && !isAttacking && !requireNewBlockPress)
             {
                 if (!isBlockingAnim && Time.time >= nextBlockTime)
                 {
@@ -106,7 +126,7 @@ public class PlayerCombat : MonoBehaviour, ICombatReceiver
                     activeBlockCoroutine = StartCoroutine(EnableBlockRoutine());
                 }
             }
-            else if (!isHoldingE && isBlockingAnim) 
+            else if (!isHoldingBlock && isBlockingAnim) 
             {
                 ForceStopBlocking();
                 nextBlockTime = Time.time + blockCooldown;
@@ -115,39 +135,49 @@ public class PlayerCombat : MonoBehaviour, ICombatReceiver
         
         if (healthScript != null && healthScript.IsBlocking) return;
         
-        // --- 4. ATTACK LOGIC ---
-        if (Input.GetButtonDown("Fire1"))
-        {
-            if (Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl))
-            {
-                if (!isAttacking && Time.time >= nextAttackTime) 
-                {
-                    if (healthScript != null && healthScript.TrySpendEnergy(heavyAttackCost)) PerformHeavyAttack();
-                    else Debug.Log("Not enough energy for Heavy Attack!");
-                }
-            }
-            else
-            {
-                if (isAttacking)
-                {
-                    if (!isHeavyAttacking) inputQueued = true;
-                }
-                else if (Time.time >= nextAttackTime)
-                {
-                    if (healthScript != null && healthScript.TrySpendEnergy(lightAttackCost))
-                    {
-                        comboStep = 0;
-                        PerformComboStep();
-                    }
-                    else Debug.Log("Out of Energy!");
-                }
-            }
-        }
-
+        // --- 4. QUEUED ATTACK LOGIC ---
+        // (The actual attack triggering is now handled in HandleAttackInput)
         if (inputQueued && canCombo)
         {
             if (healthScript != null && healthScript.TrySpendEnergy(lightAttackCost)) PerformComboStep();
             else inputQueued = false; 
+        }
+    }
+
+    // --- NEW: This method fires ONLY when the left mouse button is clicked ---
+    private void HandleAttackInput()
+    {
+        // Ignore attacks if clicking on UI, blocking, or stunned
+        if (EventSystem.current != null && EventSystem.current.IsPointerOverGameObject()) return;
+        if (healthScript != null && healthScript.IsBlocking) return;
+        if (isStunned) return;
+
+        // --- NEW: Ask InputManager if the modifier is held down ---
+        bool isHeavyModifierDown = InputManager.Instance != null && InputManager.Instance.IsHeavyModifierHeld;
+
+        if (isHeavyModifierDown)
+        {
+            if (!isAttacking && Time.time >= nextAttackTime) 
+            {
+                if (healthScript != null && healthScript.TrySpendEnergy(heavyAttackCost)) PerformHeavyAttack();
+                else Debug.Log("Not enough energy for Heavy Attack!");
+            }
+        }
+        else
+        {
+            if (isAttacking)
+            {
+                if (!isHeavyAttacking) inputQueued = true;
+            }
+            else if (Time.time >= nextAttackTime)
+            {
+                if (healthScript != null && healthScript.TrySpendEnergy(lightAttackCost))
+                {
+                    comboStep = 0;
+                    PerformComboStep();
+                }
+                else Debug.Log("Out of Energy!");
+            }
         }
     }
 

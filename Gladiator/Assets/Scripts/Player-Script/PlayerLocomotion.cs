@@ -36,7 +36,7 @@ public class PlayerLocomotion : MonoBehaviour
 
     [HideInInspector] public bool isAttacking = false; 
     [HideInInspector] public bool isRolling = false;
-    [HideInInspector] public bool isStunned = false; // --- NEW: Stun Flag ---
+    [HideInInspector] public bool isStunned = false; 
 
     private Vector3 verticalVelocity;
     private float currentSpeed;
@@ -55,12 +55,29 @@ public class PlayerLocomotion : MonoBehaviour
         normalCenter = characterController.center;
     }
 
+    // --- NEW: Subscribe to the Roll event ---
+    void OnEnable()
+    {
+        if (InputManager.Instance != null)
+        {
+            InputManager.Instance.OnRollPressed += TryStartRoll;
+        }
+    }
+
+    // --- NEW: Unsubscribe from the Roll event ---
+    void OnDisable()
+    {
+        if (InputManager.Instance != null)
+        {
+            InputManager.Instance.OnRollPressed -= TryStartRoll;
+        }
+    }
+
     void Update()
     {
         // 1. GRAVITY
         if (characterController != null && !characterController.enabled) return;
         
-        // We only disable gravity for attacks. If we are stunned, we still want to fall normally!
         if (!isAttacking)
         {
             if (characterController.isGrounded && verticalVelocity.y < 0)
@@ -73,17 +90,10 @@ public class PlayerLocomotion : MonoBehaviour
         {
             verticalVelocity.y = 0;
         }
-
-        // 2. INPUT
-        if (Input.GetKeyDown(KeyCode.Space))
-        {
-            TryStartRoll();
-        }
-
-        // 3. ROOT MOTION TOGGLE
+        
+        // 2. ROOT MOTION TOGGLE
         if (animator != null)
         {
-            // --- UPDATED: Allow Root motion if stunned so the animation handles positional shifts ---
             bool shouldUseRootMotion = isRolling || isAttacking || isStunned;
             if (animator.applyRootMotion != shouldUseRootMotion)
             {
@@ -91,14 +101,14 @@ public class PlayerLocomotion : MonoBehaviour
             }
         }
 
-        // 4. STATE LOGIC
+        // 3. STATE LOGIC
         if (isRolling)
         {
             HandleRollingState();
         }
-        else if (isAttacking || isStunned) // --- UPDATED: Stop WASD movement if stunned ---
+        else if (isAttacking || isStunned) 
         {
-            HandleActionState(); // Renamed for clarity since it handles both attacks and stuns
+            HandleActionState(); 
         }
         else
         {
@@ -108,7 +118,6 @@ public class PlayerLocomotion : MonoBehaviour
 
     void TryStartRoll()
     {
-        // --- UPDATED: Prevent rolling while stunned ---
         if (isAttacking || isStunned) return; 
         if (isRolling) return;
         if (Time.time < lastRollTime + rollCooldown) return;
@@ -127,8 +136,9 @@ public class PlayerLocomotion : MonoBehaviour
 
     void SnapRotationToInput()
     {
-        float h = Input.GetAxisRaw("Horizontal");
-        float v = Input.GetAxisRaw("Vertical");
+        // --- NEW: Using InputManager ---
+        float h = InputManager.Instance.RawMovementInput.x;
+        float v = InputManager.Instance.RawMovementInput.y;
         Vector3 inputDir = new Vector3(h, 0f, v).normalized;
 
         if (inputDir.magnitude > 0.1f)
@@ -148,16 +158,15 @@ public class PlayerLocomotion : MonoBehaviour
             characterController.height = normalHeight;
             characterController.center = normalCenter;
             
-            float h = Input.GetAxisRaw("Horizontal");
-            float v = Input.GetAxisRaw("Vertical");
+            // --- NEW: Using InputManager ---
+            float h = InputManager.Instance.RawMovementInput.x;
+            float v = InputManager.Instance.RawMovementInput.y;
             currentSpeed = (new Vector3(h, 0, v).magnitude > 0.1f) ? walkSpeed : 0f;
         }
     }
 
-    // Renamed from HandleAttackState to HandleActionState
     void HandleActionState()
     {
-        // Zeroes out the animator blend tree so the character doesn't try to walk in place
         if (animator != null)
         {
             animator.SetFloat("Speed", 0f);
@@ -168,12 +177,10 @@ public class PlayerLocomotion : MonoBehaviour
 
     void OnAnimatorMove()
     {
-        // --- UPDATED: Allow Animator to move the character during stun ---
         if ((isRolling || isAttacking || isStunned) && animator != null)
         {
             Vector3 velocity = animator.deltaPosition;
             
-            // Only apply manual gravity if we are NOT attacking (so rolls and stuns get gravity)
             if (!isAttacking) 
             {
                 velocity.y += verticalVelocity.y * Time.deltaTime; 
@@ -188,8 +195,9 @@ public class PlayerLocomotion : MonoBehaviour
     {
         bool isLocked = lockOnScript != null && lockOnScript.CurrentTarget != null;
 
-        float h = Input.GetAxis("Horizontal");
-        float v = Input.GetAxis("Vertical");
+        // --- NEW: Using InputManager ---
+        float h = InputManager.Instance.MovementInput.x;
+        float v = InputManager.Instance.MovementInput.y;
         Vector3 inputDir = new Vector3(h, 0, v).normalized;
         bool wantsToMove = inputDir.magnitude > 0.1f;
         
@@ -203,7 +211,8 @@ public class PlayerLocomotion : MonoBehaviour
             }
             else
             {
-                finalTargetSpeed = Input.GetKey(KeyCode.LeftShift) ? runSpeed : walkSpeed;
+                // --- NEW: Using InputManager for running ---
+                finalTargetSpeed = InputManager.Instance.IsRunning ? runSpeed : walkSpeed;
             }
         }
 
