@@ -16,7 +16,7 @@ public class PlayerLockOn : MonoBehaviour
         mainCam = Camera.main;
     }
 
-    // --- NEW: Subscribe to the InputManager Event ---
+    //--- Subscribe to the InputManager Event ---
     void OnEnable()
     {
         if (InputManager.Instance != null)
@@ -25,7 +25,7 @@ public class PlayerLockOn : MonoBehaviour
         }
     }
 
-    // --- NEW: Always unsubscribe to prevent memory leaks ---
+    //--- Always unsubscribe to prevent memory leaks ---
     void OnDisable()
     {
         if (InputManager.Instance != null)
@@ -34,7 +34,7 @@ public class PlayerLockOn : MonoBehaviour
         }
     }
 
-    // --- NEW: The method called by the event ---
+    // --- The method called by the event ---
     private void HandleLockOnToggle()
     {
         if (CurrentTarget != null)
@@ -45,7 +45,7 @@ public class PlayerLockOn : MonoBehaviour
 
     void Update()
     {
-        // Break lock if target is dead, disabled, or too far
+        //Break lock if target is dead, disabled, or too far
         if (CurrentTarget != null)
         {
             float dist = Vector3.Distance(transform.position, CurrentTarget.position);

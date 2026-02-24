@@ -21,13 +21,16 @@ public class EnemyLocomotion : MonoBehaviour
     public float pathUpdateDelay = 0.2f;
 
     private NavMeshAgent agent;
-    private CharacterController cc; // Cached for performance
+    private CharacterController cc; 
     private float pathUpdateTimer;
 
     void Start()
     {
         agent = GetComponent<NavMeshAgent>();
-        cc = GetComponent<CharacterController>(); // Cache this once!
+        
+        /*Cache the CharacterController reference in Start() to avoid the high performance cost of calling GetComponent 
+		every single frame in Update()*/
+        cc = GetComponent<CharacterController>(); 
         
         if (animator == null)
             animator = GetComponent<Animator>();
@@ -43,7 +46,7 @@ public class EnemyLocomotion : MonoBehaviour
 
     void Update()
     {
-        // Safe check using the cached reference
+        //Safe check using the cached reference
         if (cc != null && !cc.enabled) return;
         if (playerTarget == null) return;
 
@@ -53,9 +56,10 @@ public class EnemyLocomotion : MonoBehaviour
 
     void MoveToPlayer()
     {
-        // Only calculate paths if the agent is fully active and on the mesh
+        //Only calculate paths if the agent is fully active and on the mesh
         if (!agent.isOnNavMesh || !agent.isActiveAndEnabled) return;
 
+        //Only recalculate the NavMesh path every 0.2 seconds instead of every frame to save CPU overhead
         pathUpdateTimer += Time.deltaTime;
         if (pathUpdateTimer >= pathUpdateDelay)
         {
@@ -75,7 +79,7 @@ public class EnemyLocomotion : MonoBehaviour
 
         if (isStrafing)
         {
-            // --- STRAFING BEHAVIOR ---
+            //--- STRAFING BEHAVIOR ---
             agent.updateRotation = false;
             
             Vector3 directionToPlayer = (playerTarget.position - transform.position).normalized;
@@ -87,6 +91,7 @@ public class EnemyLocomotion : MonoBehaviour
                 transform.rotation = Quaternion.Slerp(transform.rotation, lookRotation, rotationSpeed * Time.deltaTime);
             }
 
+            //Convert world-space velocity into local-space
             Vector3 relativeVelocity = transform.InverseTransformDirection(agent.velocity);
             
             float vX = relativeVelocity.x / agent.speed; 
@@ -97,7 +102,7 @@ public class EnemyLocomotion : MonoBehaviour
         }
         else
         {
-            // --- CHASING BEHAVIOR ---
+            //--- CHASING BEHAVIOR ---
             agent.updateRotation = true;
 
             animator.SetFloat("Speed", agent.velocity.magnitude, 0.1f, Time.deltaTime);
@@ -113,21 +118,22 @@ public class EnemyLocomotion : MonoBehaviour
         agent.autoBraking = true; 
     }
     
-    // CALL THIS when an attack/dodge finishes
+    //CALL THIS when an attack/dodge finishes
     public void ResumeMovement()
     {
-        // 1. Safety Check: Only touch the agent if it's safely on the NavMesh
+        //1. Safety Check: Only touch the agent if it's safely on the NavMesh
         if (agent != null && agent.isActiveAndEnabled && agent.isOnNavMesh)
         {
             agent.updateRotation = true;
             agent.isStopped = false;
             
-            // Clear out any stale paths from before the dodge
+            //Clear out any stale paths from before the dodge
             agent.ResetPath(); 
         }
         else if (agent != null && !agent.isOnNavMesh)
         {
-            // Failsafe: If the dodge pushed them off the mesh, snap them back
+            /*If an attack knockback physics interaction accidentally pushes the enemy off the NavMesh 
+			sample the nearest valid surface and warp them back so they don't break the game*/
             NavMeshHit hit;
             if (NavMesh.SamplePosition(transform.position, out hit, 2.0f, NavMesh.AllAreas))
             {
@@ -137,9 +143,8 @@ public class EnemyLocomotion : MonoBehaviour
             }
         }
 
-        // 2. Force an immediate path calculation on the NEXT normal frame
+        //2. Force an immediate path calculation on the NEXT normal frame
         pathUpdateTimer = pathUpdateDelay; 
-        
-        // 3. REMOVED the manual Update() call. Let Unity handle the frame naturally!
+       
     }
 }

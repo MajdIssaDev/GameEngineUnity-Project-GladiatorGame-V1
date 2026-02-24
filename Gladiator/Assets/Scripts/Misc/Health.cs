@@ -10,7 +10,7 @@ public class HealthScript : MonoBehaviour
     public Stats stats;
 
     [Header("UI References")]
-    [SerializeField] private EnemyHealthBar enemyFloatingBar; // Enemy UI
+    [SerializeField] private EnemyHealthBar enemyFloatingBar; //Enemy UI
 
     [Header("Energy System")]
     public float currentEnergy;
@@ -19,10 +19,10 @@ public class HealthScript : MonoBehaviour
     [Header("Block / Parry Settings")]
     public bool IsBlocking = false;
     private float blockStartTime;
-    private float parryWindow = 0.35f; // 0.35s window for Parry
+    private float parryWindow = 0.35f; //0.35s window for Parry
     private float blockEnergyCost = 20f; 
 
-    // Internal State
+    //Internal State
     public bool isInvincible = false;
     public bool IsDead = false; 
     private Animator animator;
@@ -34,7 +34,7 @@ public class HealthScript : MonoBehaviour
         mainCollider = GetComponent<Collider>();
         stats = GetComponent<Stats>();
 
-        // Initialize Stats
+        //Initialize Stats
         currentHealth = maxHealth;
         if (stats != null) currentEnergy = stats.maxEnergy;
         if (transform.root.CompareTag("Player")) playerCombat = GetComponent<PlayerCombat>();
@@ -48,7 +48,8 @@ public class HealthScript : MonoBehaviour
     {
         if (stats == null) return;
 
-        // 1. Health Regen
+        /*Execute health and energy regeneration in FixedUpdate so the regen rate 
+		remains mathematically consistent regardless of fluctuating framerates*/
         if (!IsDead && currentHealth > 0 && currentHealth < maxHealth)
         {
             currentHealth += stats.regenSpeed / 50;
@@ -56,8 +57,7 @@ public class HealthScript : MonoBehaviour
             UpdateHealthUI();
         }
         
-        // 2. Energy Regen
-        // Regen is 80% slower while holding block
+        //Regen is 80% slower while holding block
         float regenMult = IsBlocking ? 0.2f : 1.0f; 
         
         if (!IsDead && currentEnergy < stats.maxEnergy && playerCombat && !playerCombat.isAttacking)
@@ -68,7 +68,7 @@ public class HealthScript : MonoBehaviour
         }
     }
     
-    // --- BLOCK INPUTS (Called by PlayerCombat) ---
+    //--- BLOCK INPUTS (Called by PlayerCombat) ---
     public void StartBlocking()
     {
         if (IsBlocking) return;
@@ -82,27 +82,29 @@ public class HealthScript : MonoBehaviour
         IsBlocking = false;
     }
 
-    // --- DAMAGE LOGIC ---
+    //--- DAMAGE LOGIC ---
     public void takeDamage(float damageAmount, GameObject attacker = null)
     {
         if (IsDead || isInvincible) return;
 
-        // 1. BLOCK LOGIC
+        //1. BLOCK LOGIC
         if (IsBlocking && attacker != null)
         {
             Vector3 directionToAttacker = (attacker.transform.position - transform.position).normalized;
             float dot = Vector3.Dot(transform.forward, directionToAttacker);
             
-            if (dot > 0.25f) // Frontal Cone
+            /*Use the Dot Product of the defender's forward vector and the attacker's direction 
+			to mathematically calculate if the attack hit the front of the shield*/
+            if (dot > 0.25f) 
             {
-                // A. PARRY
+                //A. PARRY
                 if (Time.time - blockStartTime <= parryWindow)
                 {
                     PerformParry(attacker);
                     return; 
                 }
                 
-                // B. REGULAR BLOCK
+                //B. REGULAR BLOCK
                 if (currentEnergy >= blockEnergyCost)
                 {
                     PerformBlock(attacker);
@@ -110,18 +112,18 @@ public class HealthScript : MonoBehaviour
                 }
                 else
                 {
-                    // C. GUARD BREAK (Recoil happens HERE only)
+                    //C. GUARD BREAK (Recoil happens HERE only)
                     IsBlocking = false;
                     animator.SetBool("Blocking", false);
                     
-                    // YOU get recoiled/stunned because you failed
+                    //YOU get recoiled/stunned because you failed
                     animator.SetTrigger("Stun"); 
                     Debug.Log("Guard Broken!");
                 }
             }
         }
 
-        // 2. TAKE DAMAGE
+        //2. TAKE DAMAGE
         float damage = damageAmount * (100 / (100 + stats.defence));
         currentHealth -= damage;
 
@@ -137,44 +139,42 @@ public class HealthScript : MonoBehaviour
 
     void PerformParry(GameObject attacker)
     {
-        // 1. DEFENDER REACTION (You)
-        // You requested "Blocked" trigger for the blocker
+        //1. DEFENDER REACTION (You)
         animator.SetTrigger("Blocked");
         
-        // Reward Energy
+        //Reward Energy
         currentEnergy += 20;
         UpdateEnergyUI();
 
-        // 2. ATTACKER REACTION (Enemy)
+        //2. ATTACKER REACTION (Enemy)
         var enemyCombat = attacker.GetComponent<EnemyCombat>();
         if (enemyCombat != null)
         {
-            enemyCombat.TriggerStunReaction(); // Plays "Stunned" animation
+            enemyCombat.TriggerStunReaction(); 
         }
     }
 
     void PerformBlock(GameObject attacker)
     {
-        // 1. DEFENDER REACTION (You)
-        // No Recoil. Just the "Blocked" animation.
+        //1. DEFENDER REACTION (You)
         animator.SetTrigger("Blocked");
 
-        // Cost Energy
+        //Cost Energy
         currentEnergy -= blockEnergyCost;
         UpdateEnergyUI();
         
-        // 2. ATTACKER REACTION (Enemy)
+        //2. ATTACKER REACTION (Enemy)
         var enemyCombat = attacker.GetComponent<EnemyCombat>();
         if (enemyCombat != null)
         {
-            enemyCombat.ApplyBlockSlow(3.0f);  // Slows them down
+            enemyCombat.ApplyBlockSlow(3.0f);  
         }
     }
 
-    // --- UI UPDATES ---
+    //--- UI UPDATES ---
     private void UpdateEnergyUI()
     {
-        // Add a check so ONLY the Player updates the global HUD
+        //Add a check so ONLY the Player updates the global HUD
         if (gameObject.CompareTag("Player") && stats != null && UIManager.Instance != null)
         {
             UIManager.Instance.UpdateEnergy(currentEnergy, stats.maxEnergy);
@@ -183,14 +183,14 @@ public class HealthScript : MonoBehaviour
 
     private void UpdateHealthUI()
     {
-        // Add a check so ONLY the Player updates the global HUD
+        //Add a check so ONLY the Player updates the global HUD
         if (gameObject.CompareTag("Player") && UIManager.Instance != null)
         {
             UIManager.Instance.UpdateHealth(currentHealth, maxHealth);
         }
     }
 
-    // --- DEATH LOGIC ---
+    //--- DEATH LOGIC ---
     private void Die()
     {
         if (IsDead) return;
@@ -202,7 +202,7 @@ public class HealthScript : MonoBehaviour
             animator.speed = Random.Range(0.9f, 1.1f); 
         }
 
-        // Stop Combat Logic
+        //Stop Combat Logic
         var combatEvents = GetComponentInChildren<CombatAnimationEvents>();
         if (combatEvents != null) combatEvents.CloseDamageWindow();
 
@@ -212,7 +212,8 @@ public class HealthScript : MonoBehaviour
         var enemyCombat = GetComponent<EnemyCombat>();
         if (enemyCombat != null) enemyCombat.enabled = false;
 
-        // Disable Physics/NavMesh
+        /*Disable collision and pathfinding components on death, 
+		and swap the layer to Default, so dead enemies become non-obstructive scenery rather than invisible walls*/
         if (mainCollider != null) mainCollider.enabled = false;
 
         UnityEngine.AI.NavMeshAgent agent = GetComponent<UnityEngine.AI.NavMeshAgent>();
@@ -229,7 +230,7 @@ public class HealthScript : MonoBehaviour
         
         gameObject.layer = LayerMask.NameToLayer("Default");
         
-        // Handle Game Manager
+        //Handle the Game Manager
         if (gameObject.CompareTag("Enemy"))
         {
             if (GameManager.Instance != null) GameManager.Instance.EnemyDefeated();
@@ -247,16 +248,16 @@ public class HealthScript : MonoBehaviour
     public DefenseType CheckDefense(Vector3 attackerPos)
     {
         if (!IsBlocking) return DefenseType.None;
-        if (currentEnergy < 20f) return DefenseType.None; // Ensure this matches 'blockEnergyCost'
+        if (currentEnergy < 20f) return DefenseType.None; 
 
-        // Check Angle
+        //Check the Angle
         Vector3 dir = (attackerPos - transform.position).normalized;
         float dot = Vector3.Dot(transform.forward, dir);
         
         if (dot > 0.25f)
         {
-            // Check Parry Timer
-            if (Time.time - blockStartTime <= 0.25f) // Ensure this matches 'parryWindow'
+            //Check the Parry Timer
+            if (Time.time - blockStartTime <= 0.25f) 
             {
                 return DefenseType.Parry;
             }
@@ -272,17 +273,19 @@ public class HealthScript : MonoBehaviour
         if (currentEnergy >= amount)
         {
             currentEnergy -= amount;
-            UpdateEnergyUI(); // Update the slider immediately
-            return true; // Success: You have enough energy
+            UpdateEnergyUI(); 
+            return true; 
         }
         
-        return false; // Fail: Not enough energy
+        return false; 
     }
 
-    // Setters
+    //Setters
     public void setMaxHealth(float val) { maxHealth = val; UpdateHealthUI(); }
     public float getMaxHealth() { return maxHealth; }
     public void setCurrentHealth(float val) { currentHealth = val; UpdateHealthUI(); }
+    
+    //A classic action-RPG mechanic that briefly ignores damage during specific animation states
     public void EnableIFrames() { isInvincible = true; }
     public void DisableIFrames() { isInvincible = false; }
     

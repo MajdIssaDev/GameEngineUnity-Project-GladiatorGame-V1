@@ -9,12 +9,12 @@ public class SoundAutoDestroy : MonoBehaviour
 
         if (audioSource != null && audioSource.clip != null)
         {
-            // Destroy this object after the clip finishes playing
+            //Destroy the object when the clip finishes
             Destroy(gameObject, audioSource.clip.length);
         }
         else
         {
-            // Fallback safety: Destroy after 2 seconds if something is wrong
+            //Failsafe, destory after 2 seconds in case the clip is missing so we don't get a memoey leak
             Destroy(gameObject, 2f);
         }
     }

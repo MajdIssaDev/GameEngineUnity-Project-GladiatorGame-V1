@@ -1,6 +1,4 @@
 using UnityEngine;
-
-// Added Energy to the Enum
 public enum StatType { Strength, Defence, AttackSpeed, Regen, Health, Energy }
 
 public class Stats : MonoBehaviour
@@ -14,34 +12,33 @@ public class Stats : MonoBehaviour
     public float regenSpeed = 1;   
     public float attackSpeed = 1;  
     
-    // --- Energy Stat ---
+    //--- Energy Stat ---
     public float maxEnergy = 100f; 
-    public float energyRegenRate = 10f; // Energy per second
+    public float energyRegenRate = 10f; //Energy per second
     
     [Header("Dependencies")]
     public HealthScript healthScript; 
     private float baseHealth = 100f; 
 
-    // --- NEW: Internal cache for Slow Effects ---
     private float baseAttackSpeed;
     
     private void Start()
     {
         if (healthScript == null) healthScript = GetComponent<HealthScript>();
         
-        // Remember the original speed so we can restore it after being slowed
+        //Cache the base attack speed to prevent permanent stat degradation when applying temporary debuffs
         baseAttackSpeed = attackSpeed; 
     }
 
+    //Procedurally generate enemy stats based on the current wave round
     public void SetLevel(int targetLevel)
     {
         strength = 1;
         defence = 0;
         regenSpeed = 1;
         attackSpeed = 1;
-        maxEnergy = 100f; // Reset Base Energy
+        maxEnergy = 100f; 
 
-        // Reset our cache since we just reset stats
         baseAttackSpeed = 1; 
 
         float calculatedMaxHealth = baseHealth;
@@ -49,7 +46,7 @@ public class Stats : MonoBehaviour
 
         for (int i = 0; i < pointsToSpend; i++)
         {
-            int roll = Random.Range(0, 6); // Now 0-5 (added Energy case)
+            int roll = Random.Range(0, 6); 
 
             switch (roll)
             {
@@ -57,15 +54,15 @@ public class Stats : MonoBehaviour
                 case 1: defence += 1f; break;
                 case 2: regenSpeed += 0.5f; break;
                 case 3: 
+                    //Cap attack speed at 3.0 to prevent animation clipping
                     if (attackSpeed < 3.0f) attackSpeed += 0.1f;
                     else strength += 1f; 
                     break;
                 case 4: calculatedMaxHealth += 10f; break;
-                case 5: maxEnergy += 10f; break; // Energy Upgrade
+                case 5: maxEnergy += 10f; break; 
             }
         }
         
-        // Update the cache after leveling up
         baseAttackSpeed = attackSpeed;
 
         if (healthScript != null)
@@ -75,13 +72,14 @@ public class Stats : MonoBehaviour
         }
     }
 
+    //Reverse-engineer the current level from raw stat values
     public int GetLevel()
     {
         float strUpgrades = strength - 1;
         float defUpgrades = defence;
         float regUpgrades = (regenSpeed - 1) * 2;
         float atkUpgrades = (attackSpeed - 1) * 10;
-        float energyUpgrades = (maxEnergy - 100) / 10f; // 10 energy = 1 level
+        float energyUpgrades = (maxEnergy - 100) / 10f; 
 
         float healthUpgrades = 0;
         if (healthScript != null)
@@ -112,7 +110,7 @@ public class Stats : MonoBehaviour
                 
             case StatType.AttackSpeed:
                 attackSpeed += 0.1f; 
-                baseAttackSpeed = attackSpeed; // Update cache!
+                baseAttackSpeed = attackSpeed; 
                 break;
                 
             case StatType.Regen:
@@ -144,19 +142,16 @@ public class Stats : MonoBehaviour
             default: return 0;
         }
     }
-
-    // --- NEW: SLOW EFFECT LOGIC ---
     
     public void ApplySlowEffect(float percentage)
     {
-        // percentage = 0.3f means slow by 30% (result is 70% speed)
-        // We always calculate from 'baseAttackSpeed' so effects don't stack infinitely
+        //Calculate debuffs against the cached base speed; it prevents exponential stacking
         attackSpeed = baseAttackSpeed * (1.0f - percentage);
     }
 
     public void RemoveSlowEffect()
     {
-        // Restore to original speed
+        //Restore the original speed from the cache to cleanly end the debuff state
         attackSpeed = baseAttackSpeed;
     }
 }

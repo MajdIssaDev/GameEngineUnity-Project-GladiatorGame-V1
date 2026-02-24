@@ -26,17 +26,18 @@ public class UIManager : MonoBehaviour
     public Slider playerHealthBar;
     public Slider playerEnergyBar;
 
-    // We store the menu to restore when unpausing
+    //Cache the currently active menu so the Pause menu knows exactly what to reopen when the player resumes the game
     private GameObject menuToRestore = null;
 
     private void Awake()
     {
-        // Standard Singleton pattern
+        //Centralizes all UI updates to decouple the Canvas logic from the GameManager,
+        //applying the Single Responsibility Principle (SRP)
         if (Instance == null) Instance = this;
         else Destroy(gameObject);
     }
 
-    // --- HUD UPDATES ---
+    //--- HUD UPDATES ---
     public void UpdateMoney(int money)
     {
         if (moneyText != null) moneyText.text = "Gold: \n" + money;
@@ -50,6 +51,7 @@ public class UIManager : MonoBehaviour
 
     public void UpdateHealth(float currentHealth, float maxHealth)
     {
+        //Always check if maxHealth is greater than 0 before dividing to prevent catastrophic DivideByZero exceptions
         if (playerHealthBar != null && maxHealth > 0)
         {
             playerHealthBar.value = currentHealth / maxHealth;
@@ -64,7 +66,7 @@ public class UIManager : MonoBehaviour
         }
     }
 
-    // --- PANEL MANAGEMENT ---
+    //Explicitly toggle all major UI panels to prevent overlapping menus and ensure a clean Canvas state
     public void ShowMainMenu()
     {
         mainMenuPanel.SetActive(true);
@@ -95,7 +97,7 @@ public class UIManager : MonoBehaviour
         if (loseMenuPanel != null) loseMenuPanel.SetActive(true);
     }
 
-    // --- PAUSE LOGIC ---
+    //--- PAUSE LOGIC ---
     public void TogglePauseUI(bool isPaused)
     {
         if (isPaused)

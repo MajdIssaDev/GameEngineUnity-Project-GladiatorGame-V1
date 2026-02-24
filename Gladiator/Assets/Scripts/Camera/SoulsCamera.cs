@@ -39,7 +39,7 @@ public class SoulsCamera : MonoBehaviour
     {
         if (playerTransform == null) return;
 
-        // Initialize angles to current camera view
+        //Initialize angles to current camera view
         Vector3 angles = transform.eulerAngles;
         currentX = angles.y;
         currentY = NormalizeAngle(angles.x);
@@ -49,6 +49,8 @@ public class SoulsCamera : MonoBehaviour
     void LateUpdate()
     {
         if (playerTransform == null) return;
+        
+        //Stop camera calculations if the game is paused so the player can't move the camera around while in menus
         if (Time.deltaTime <= float.Epsilon || Time.timeScale == 0f) 
         {
             return; 
@@ -56,13 +58,11 @@ public class SoulsCamera : MonoBehaviour
 
         Vector3 focusPoint = playerTransform.position + Vector3.up * heightOffset;
         bool isLocked = lockOnScript != null && lockOnScript.CurrentTarget != null;
-
-        // ---------------------------------------------------------
-        // 1. HANDLE ROTATION INPUT & LOGIC
-        // ---------------------------------------------------------
+        
+        //1. HANDLE ROTATION INPUT & LOGIC
         if (isLocked)
         {
-            // --- LOCKED MODE ---
+            //--- LOCKED MODE ---
             Vector3 targetCenter = lockOnScript.CurrentTarget.position;
             targetCenter.y += verticalAimBias;
 
@@ -80,28 +80,28 @@ public class SoulsCamera : MonoBehaviour
         }
         else
         {
-            // --- FREE MODE ---
-            // --- NEW: Using InputManager for Mouse Input ---
+            //--- FREE MODE ---
+            
+            //Fetch mouse movement from our centralized InputManager to keep inputs decoupled from the camera logic
             float mouseX = InputManager.Instance != null ? InputManager.Instance.MouseInput.x : 0f;
             float mouseY = InputManager.Instance != null ? InputManager.Instance.MouseInput.y : 0f;
 
             float targetX = currentX + mouseX * mouseSensitivity;
             float targetY = currentY - mouseY * mouseSensitivity;
 
-            // Clamp Vertical Look
+            //Clamp Vertical Look
             targetY = Mathf.Clamp(targetY, -50, 80);
 
-            // Smooth Damp
+            //Smooth Damp
             currentX = Mathf.SmoothDampAngle(currentX, targetX, ref xVelocity, 0f); 
             currentY = Mathf.SmoothDampAngle(currentY, targetY, ref yVelocity, 0f);
 
-            // Apply rotation from the calculated angles
+            //Apply rotation from the calculated angles
             transform.rotation = Quaternion.Euler(currentY, currentX, 0);
         }
 
-        // ---------------------------------------------------------
-        // 2. CALCULATE POSITION (Always based on currentX/Y)
-        // ---------------------------------------------------------
+
+        //2. CALCULATE POSITION (Always based on currentX/Y)
         Quaternion orbitalRotation = Quaternion.Euler(currentY, currentX, 0);
 
         Vector3 camRight = orbitalRotation * Vector3.right;
@@ -109,10 +109,10 @@ public class SoulsCamera : MonoBehaviour
         
         Vector3 offsetVector = camRight * shoulderOffset;
         Vector3 desiredPos = focusPoint + (camBack * defaultDistance) + offsetVector;
-
-        // ---------------------------------------------------------
-        // 3. COLLISION HANDLING
-        // ---------------------------------------------------------
+        
+        //3. COLLISION HANDLING
+        
+        //Use a SphereCast to detect walls between the player and the camera, pulling the camera closer to prevent clipping through geometry
         Vector3 castDir = (desiredPos - focusPoint).normalized;
         float castDist = Vector3.Distance(focusPoint, desiredPos);
         RaycastHit hit;
@@ -126,7 +126,7 @@ public class SoulsCamera : MonoBehaviour
         currentDistance = Mathf.SmoothDamp(currentDistance, targetDist, ref distVelocity, collisionSmoothTime);
         if (currentDistance < minDistance) currentDistance = minDistance;
 
-        // Smart Offset Reduction
+        //Smart Offset Reduction
         float offsetRatio = Mathf.Clamp01(currentDistance / defaultDistance);
         Vector3 finalOffset = offsetVector * offsetRatio;
 

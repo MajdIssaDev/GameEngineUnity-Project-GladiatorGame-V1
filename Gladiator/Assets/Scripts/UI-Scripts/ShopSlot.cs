@@ -130,25 +130,25 @@ public class ShopSlot : MonoBehaviour
         }
     }
     
-    // --- THE FLASH LOGIC ---
+    //--- THE FLASH LOGIC ---
     IEnumerator FlashErrorColor()
     {
         if (myButton == null) yield break;
 
-        // 1. Create a "Red" version of the button settings
+        //1. Create a "Red" version of the button settings
         ColorBlock errorBlock = myButton.colors;
         errorBlock.normalColor = errorColor;
-        errorBlock.highlightedColor = errorColor; // Also make it red even if mouse is over it
+        errorBlock.highlightedColor = errorColor; //Also make it red even if mouse is over it
         errorBlock.pressedColor = errorColor;
         errorBlock.selectedColor = errorColor;
 
-        // 2. Apply Red
+        //2. Apply Red
         myButton.colors = errorBlock;
 
-        // 3. Wait for 0.15 seconds
+        //3. Wait for 0.15 seconds
         yield return new WaitForSeconds(flashDuration);
 
-        // 4. Revert to Original colors
+        //4. Revert to Original colors
         myButton.colors = originalColors;
     }
     
@@ -158,18 +158,18 @@ public class ShopSlot : MonoBehaviour
 
         Vector3 soundPosition;
 
-        // 1. Try to find the Main Camera
+        //1. Try to find the Main Camera
         if (Camera.main != null)
         {
             soundPosition = Camera.main.transform.position;
         }
-        // 2. Fallback: If no camera is found, play at the button's own position
+        //2. Fallback: If no camera is found, play at the button's own position
         else 
         {
             soundPosition = transform.position;
         }
 
-        // 3. Play the sound (Requires Clip AND Position)
+        //3. Play the sound (Requires Clip AND Position)
         if (AudioManager.Instance != null)
         {
             AudioManager.Instance.PlaySFX(clip, soundPosition);

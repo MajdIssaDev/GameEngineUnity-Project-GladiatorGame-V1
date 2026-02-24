@@ -4,7 +4,7 @@ using TMPro;
 public class EnemyHealthBar : MonoBehaviour
 {
     [Header("Debug")]
-    public bool debugAlwaysShow = false; // CHECK THIS to force it visible!
+    public bool debugAlwaysShow = false;
 
     [Header("UI Elements")]
     public Image fillImage;
@@ -15,9 +15,8 @@ public class EnemyHealthBar : MonoBehaviour
     [Header("Behavior Settings")]
     public float visibleAfterHitTime = 5f;
     
-    // References
     private Stats enemyStats; 
-    private HealthScript healthScript; // Or ImpactReceiver
+    private HealthScript healthScript;
     private PlayerLockOn playerLockOn;
     private Transform mainCam;
     
@@ -27,18 +26,18 @@ public class EnemyHealthBar : MonoBehaviour
 
     void Start()
     {
-        // 1. Find scripts on the Enemy (Parent)
+        //1. Find scripts on the Enemy (Parent)
         enemyStats = GetComponentInParent<Stats>();
         healthScript = GetComponentInParent<HealthScript>();
         
-        // 2. Find Camera
+        //2. Find Camera
         if (Camera.main != null) mainCam = Camera.main.transform;
-
-        // 3. Find Player Lock-On
+        
+        //3. Find Player Lock-On
         GameObject player = GameObject.FindGameObjectWithTag("Player");
         if (player != null) playerLockOn = player.GetComponent<PlayerLockOn>();
 
-        // 4. Default to hidden unless Debug is on
+        //4. Default to hidden unless Debug is on
         if (canvasGroup != null) canvasGroup.alpha = debugAlwaysShow ? 1 : 0;
         if (DamageInflicted != null) DamageInflicted.text = "";
         if (EnemyName != null) EnemyName.text = enemyStats.GetTitle();
@@ -48,32 +47,32 @@ public class EnemyHealthBar : MonoBehaviour
     {
         if (healthScript == null || mainCam == null) return;
 
-        // --- 1. HEALTH ---
+        //--- 1. HEALTH ---
         float maxHealth = healthScript.getMaxHealth();
-        // Prevent divide by zero error
+        //Prevent divide by zero error
         if (maxHealth > 0)
         {
              float healthPercent = (float)healthScript.currentHealth / maxHealth;
              if (fillImage != null) fillImage.fillAmount = healthPercent;
         }
 
-        // --- 2. ROTATION ---
-        // Face the camera perfectly
+        //--- 2. ROTATION ---
+        //Make the UI always face the camera
         transform.LookAt(transform.position + mainCam.forward);
 
-        // --- 3. VISIBILITY ---
-        // If Debug Mode is ON, force visibility and skip logic
+        //--- 3. VISIBILITY ---
+        //If Debug Mode is ON, force visibility and skip logic
         if (debugAlwaysShow)
         {
             if (canvasGroup != null) canvasGroup.alpha = 1;
             return; 
         }
 
-        // Normal Logic
+        //Normal Logic
         bool isLocked = false;
         if (playerLockOn != null && playerLockOn.CurrentTarget != null)
         {
-            // Check if the locked target is part of this enemy's hierarchy
+            //Check if the locked target is part of this enemy's hierarchy
             isLocked = playerLockOn.CurrentTarget.transform == healthScript.transform;
         }
 
@@ -81,7 +80,7 @@ public class EnemyHealthBar : MonoBehaviour
 
         if (canvasGroup != null)
         {
-            // Show if Locked OR Hit, AND alive
+            //change the CanvasGroup alpha
             if ((isLocked || recentlyHit) && healthScript.currentHealth > 0)
                 canvasGroup.alpha = 1;
             else
@@ -89,7 +88,8 @@ public class EnemyHealthBar : MonoBehaviour
             
             if (recentlyHit && healthScript.currentHealth > 0)
             {
-                if (DamageInflicted != null) DamageInflicted.text = totalDamageInflictedInShortTime.ToString("0.#"); //set to damage inflicted
+                //Show the accumulated damage number, allowing fast combo hits to add up into one big satisfying number
+                if (DamageInflicted != null) DamageInflicted.text = totalDamageInflictedInShortTime.ToString("0.#"); 
             }
             else
             {

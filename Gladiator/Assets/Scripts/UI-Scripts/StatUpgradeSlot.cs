@@ -1,7 +1,7 @@
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
-using System.Collections; // Required for Coroutines
+using System.Collections;
 
 public class StatUpgradeSlot : MonoBehaviour
 {
@@ -54,7 +54,6 @@ public class StatUpgradeSlot : MonoBehaviour
             GameManager.Instance.OnShopUpdated -= RefreshUI;
         }
     }
-    // ---------------------------
 
     void InitializeSlot(GameObject player)
     {

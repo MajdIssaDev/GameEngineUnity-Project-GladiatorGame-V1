@@ -7,7 +7,7 @@ public class MusicManager : MonoBehaviour
         AudioSource audioSource = GetComponent<AudioSource>();
         if (audioSource != null)
         {
-            // This line forces the music to IGNORE the pause menu silence
+            //Allows background music to keep playing even when AudioListener paused by the GameManager
             audioSource.ignoreListenerPause = true;
         }
     }

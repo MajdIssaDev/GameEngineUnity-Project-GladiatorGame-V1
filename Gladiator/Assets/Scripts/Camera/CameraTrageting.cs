@@ -22,9 +22,9 @@ public class CameraTargeting : MonoBehaviour
         }
     }
 
-    // --- NEW: Subscribe to LockOn event ---
     void OnEnable()
     {
+        //Subscribe to the InputManager so we don't waste performance checking for 'Q' presses in Update every frame
         if (InputManager.Instance != null)
         {
             InputManager.Instance.OnLockOnPressed += HandleManualLockInput;
@@ -47,9 +47,7 @@ public class CameraTargeting : MonoBehaviour
 
     void Update()
     {
-        // Notice manual lock input (Q) was moved to HandleManualLockInput
-
-        // AUTO-SWITCH LOGIC
+        //Quality of Life: Auto-switch to the next closest enemy if our current target dies or gets disabled
         if (CurrentTarget != null)
         {
             if (!CurrentTarget.gameObject.activeInHierarchy)
@@ -95,6 +93,7 @@ public class CameraTargeting : MonoBehaviour
             HealthScript health = hit.GetComponentInParent<HealthScript>();
             Transform hitRoot = (health != null) ? health.transform : hit.transform.root;
 
+            //Filer out invalid targets (the enemy that just died)
             if (ignoreRoot != null && hitRoot == ignoreRoot) continue;
             if (health != null && health.IsDead) continue;
             if (!hit.gameObject.activeInHierarchy) continue;
@@ -118,6 +117,7 @@ public class CameraTargeting : MonoBehaviour
         while (targets.Count < 2)
             targets.Add(new CinemachineTargetGroup.Target());
 
+        //Add the enemy to the Cinemachine Target Group so the camera dynamically frames both the player and the enemy
         targets[0].Object = transform;
         targets[0].Weight = 1.5f;
         targets[0].Radius = 1.5f;
@@ -128,6 +128,7 @@ public class CameraTargeting : MonoBehaviour
 
         targetGroup.Targets = targets;
 
+        //Disable manual mouse camera controls so the player doesn't fight the auto-aim
         if (axisController != null) axisController.enabled = false;
     }
 
@@ -146,6 +147,7 @@ public class CameraTargeting : MonoBehaviour
 
         targetGroup.Targets = targets;
 
+        //Give camera control back to the mouse
         if (axisController != null) axisController.enabled = true;
     }
 }

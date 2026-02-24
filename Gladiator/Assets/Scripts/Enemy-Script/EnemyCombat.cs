@@ -27,13 +27,13 @@ public class EnemyCombat : MonoBehaviour
     public float maxDodgeChance = 75.0f;
     public float dodgeCooldown = 3.0f;
 
-    // Internal State
+
     private NavMeshAgent agent;
     private Transform playerTarget;
     private float lastAttackTime;
     private float lastDodgeTime;
     
-    // Status Effects
+    //status Effects
     public bool isStunned { get; private set; } = false;
     private Coroutine currentSlowRoutine;
     
@@ -46,7 +46,7 @@ public class EnemyCombat : MonoBehaviour
         aiScript = GetComponent<EnemyAI>();
         if (aiScript.playerTarget != null) playerTarget = aiScript.playerTarget;
         
-        // Ensure we grab Stats if not assigned
+        //Ensure we grab Stats if not assigned
         if (statsScript == null) statsScript = GetComponent<Stats>();
         
         isAttacking = false;
@@ -60,7 +60,7 @@ public class EnemyCombat : MonoBehaviour
 
     public bool CanAttack(float distanceToPlayer)
     {
-        if (isStunned) return false; // NEW: Cannot attack while stunned
+        if (isStunned) return false; //Cannot attack while stunned
         
         if (distanceToPlayer > attackRange) return false;
         if (isAttacking) return false;
@@ -78,25 +78,25 @@ public class EnemyCombat : MonoBehaviour
     {
         isStunned = true;
         
-        // 1. Play Animation
+        //1. Play Animation
         animator.SetTrigger("Stun"); // Needs a Trigger named "Stun"
-        // animator.SetBool("Stunned", true); // Optional looped state
+        //animator.SetBool("Stunned", true); // Optional looped state
 
-        // 2. Stop Moving
+        //2. Stop Moving
         if (agent != null && agent.isActiveAndEnabled) agent.isStopped = true;
         
-        // 3. Apply 50% Slow via Stats
+        //3. Apply 50% Slow via Stats
         if (statsScript != null) statsScript.ApplySlowEffect(0.5f);
 
         yield return new WaitForSeconds(duration);
 
-        // 4. Reset
+        //4. Reset
         if (statsScript != null) statsScript.RemoveSlowEffect();
         if (agent != null && agent.isActiveAndEnabled) agent.isStopped = false;
         isStunned = false;
     }
     
-    // --- NEW: SLOW LOGIC (Block Punishment) ---
+    //Punish the enemy with a temporary 30% speed debuff when the player successfully blocks their attack
     public void ApplyBlockSlow(float duration)
     {
         if (isStunned) return;
@@ -108,12 +108,12 @@ public class EnemyCombat : MonoBehaviour
     
     IEnumerator BlockSlowRoutine(float duration)
     {
-        // Apply 30% Slow
+        //Apply 30% Slow
         if (statsScript != null) statsScript.ApplySlowEffect(0.3f);
 
         yield return new WaitForSeconds(duration);
 
-        // Reset
+        //Reset
         if (statsScript != null) statsScript.RemoveSlowEffect();
         currentSlowRoutine = null;
     }
@@ -128,7 +128,7 @@ public class EnemyCombat : MonoBehaviour
             agent.velocity = Vector3.zero;
         }
 
-        // Face Player
+        //Face Player
         if (playerTarget != null) 
         {
             Vector3 direction = (playerTarget.position - transform.position).normalized;
@@ -138,12 +138,12 @@ public class EnemyCombat : MonoBehaviour
 
         yield return new WaitForSeconds(minAttackDelay);
 
-        // Reset Triggers
+        //Reset the Triggers
         animator.ResetTrigger("Attack");
         animator.ResetTrigger("HeavyAttack");
         animator.ResetTrigger("AttackCombo");
 
-        // Set Speed (Now automatically includes Slow Effects from Stats)
+        //Set the Speed (Now automatically includes Slow Effects from Stats)
         float baseSpeed = (statsScript != null) ? statsScript.attackSpeed : 1.0f;
 
         isHeavyAttacking = Random.value < heavyAttackChance;
@@ -153,18 +153,19 @@ public class EnemyCombat : MonoBehaviour
 
         if (isHeavyAttacking)
         {
-            // Heavy Logic
+            //Heavy Logic
             float heavySpeed = (baseSpeed / 2.0f) + 0.5f;
             animator.SetFloat("AttackSpeedMultiplier", heavySpeed);
             animator.SetTrigger("HeavyAttack");
         }
         else
         {
-            // Light Logic
+            //Light Logic
             animator.SetFloat("AttackSpeedMultiplier", baseSpeed);
             animator.SetTrigger("Attack");
         }
 
+        //Add a timeout to the attack coroutine so if an animation event gets skipped or interrupted
         float safetyTimer = 4.0f; 
         while (isAttacking && safetyTimer > 0)
         {
@@ -175,7 +176,7 @@ public class EnemyCombat : MonoBehaviour
         FinishAttack(); 
     }
 
-    // --- ANIMATION EVENTS ---
+    //ANIMATION EVENTS
 
     public void OpenComboWindow()
     {
@@ -211,6 +212,9 @@ public class EnemyCombat : MonoBehaviour
         if (Time.time < lastDodgeTime + dodgeCooldown || isAttacking || isStunned) return;
 
         int level = statsScript != null ? statsScript.GetLevel() : 1;
+        
+        /*Dynamically calculate dodge probability based on the enemy's level;
+        making late-game enemies much harder to hit and more reactive*/
         float currentDodgeChance = Mathf.Clamp(level * 5.0f, 0, maxDodgeChance);
 
         if (Random.Range(0, 100) < currentDodgeChance)
@@ -226,23 +230,23 @@ public class EnemyCombat : MonoBehaviour
     {
         animator.SetTrigger("Stun");
         
-        // Disable Hitbox immediately so they don't damage you while stunned
+        //Forcefully disable the weapon hitbox immediately if the enemy gets parried mid-swing
         if (currentWeaponDamage != null) currentWeaponDamage.DisableHitbox();
         
-        // Reset flags
+        //Reset the flags
         isAttacking = false;
         isHeavyAttacking = false;
         
-        // Apply Stun
-        ApplyStun(5); // Or 0.5f, whatever feels right
+        //Apply Stun
+        ApplyStun(5); //Or 0.5f; whatever feels right
     }
     
-    // 2. SAFETY RESET (Fixes "Frozen Forever" bug)
+    //Reset combat flags when the object is enabled to prevent enemies from spawning in a frozen/stunned state
     private void OnEnable()
-    {
+    { 
+        //Reset other states if needed
         isStunned = false; 
         isAttacking = false;
-        // Reset other states if needed
     }
 
     public void ApplyStun(float duration)

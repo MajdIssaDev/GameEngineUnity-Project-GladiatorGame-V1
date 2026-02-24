@@ -32,7 +32,6 @@ public class EnemyWeaponHandler : MonoBehaviour
             enemyAnimator = GetComponent<Animator>();
     }
 
-    //Called ONLY by GameManager now
     public void EquipWeapon(WeaponData weaponData)
     {
         if (weaponData == null) return;
@@ -77,7 +76,6 @@ public class EnemyWeaponHandler : MonoBehaviour
             enemyAnimator.runtimeAnimatorController = weaponData.animatorOverride;
         }
         
-        //5. UPDATE ENEMY COMBAT [NEW]
         //We get the specific script component from the new weapon object
         WeaponDamage newWeaponScript = currentWeaponInstance.GetComponent<WeaponDamage>();
         

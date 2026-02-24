@@ -13,14 +13,14 @@ public class PlayerCombat : MonoBehaviour, ICombatReceiver
     private RuntimeAnimatorController baseController;
     private WeaponDamage currentWeaponScript; 
 
-    // States
+    //States
     public bool isAttacking { get; private set; }
     public bool isStunned { get; private set; } = false;
     public bool isHeavyAttacking { get; private set; } 
     private bool canCombo = false;      
     private bool inputQueued = false;   
 
-    // Logic Variables
+    //Logic Variables
     private int comboStep = 0;
     private float lastAttackTime = 0f;
     private float maxAttackDuration = 5.0f; 
@@ -53,7 +53,7 @@ public class PlayerCombat : MonoBehaviour, ICombatReceiver
         isAttacking = false;
     }
 
-    // --- NEW: Subscribe to the Attack event ---
+    //--- Subscribe to the Attack event ---
     void OnEnable()
     {
         if (InputManager.Instance != null)
@@ -62,7 +62,7 @@ public class PlayerCombat : MonoBehaviour, ICombatReceiver
         }
     }
 
-    // --- NEW: Unsubscribe from the Attack event ---
+    //--- Unsubscribe from the Attack event ---
     void OnDisable()
     {
         if (InputManager.Instance != null)
@@ -88,13 +88,13 @@ public class PlayerCombat : MonoBehaviour, ICombatReceiver
     
     void Update()
     {
-        // Don't process combat inputs if clicking on UI
+        //Don't process combat inputs if clicking on UI
         if (EventSystem.current != null && EventSystem.current.IsPointerOverGameObject()) return;
         
         if (isAttacking && Time.time > lastAttackTime + maxAttackDuration) OnFinishAttack();
         
-        // --- 1. TRACK KEY RELEASES ALWAYS ---
-        // --- NEW: Using InputManager for continuous hold checks ---
+        //--- 1. TRACK KEY RELEASES ALWAYS ---
+        //--- Using InputManager for continuous hold checks ---
         bool isHoldingBlock = InputManager.Instance != null && InputManager.Instance.IsBlocking;
         
         if (!isHoldingBlock)
@@ -102,15 +102,15 @@ public class PlayerCombat : MonoBehaviour, ICombatReceiver
             requireNewBlockPress = false;
         }
 
-        // --- 2. IRONCLAD STUN CHECK ---
+        //--- 2. IRONCLAD STUN CHECK ---
         if (isStunned) 
         {
-            // Ruthlessly enforce the movement lock every single frame we are stunned
+            //Ruthlessly enforce the movement lock every single frame we are stunned
             if (movementScript != null) movementScript.isStunned = true;
-            return; // EXIT HERE. Impossible for block release to do anything else.
+            return; //EXIT HERE. Impossible for block release to do anything else.
         }
         
-        // --- 3. BLOCKING LOGIC ---
+        //--- 3. BLOCKING LOGIC ---
         if (healthScript != null)
         {
             bool isBlockingAnim = animator.GetBool("Blocking");
@@ -135,8 +135,8 @@ public class PlayerCombat : MonoBehaviour, ICombatReceiver
         
         if (healthScript != null && healthScript.IsBlocking) return;
         
-        // --- 4. QUEUED ATTACK LOGIC ---
-        // (The actual attack triggering is now handled in HandleAttackInput)
+        //--- 4. QUEUED ATTACK LOGIC ---
+        //(The actual attack triggering is now handled in HandleAttackInput)
         if (inputQueued && canCombo)
         {
             if (healthScript != null && healthScript.TrySpendEnergy(lightAttackCost)) PerformComboStep();
@@ -144,15 +144,15 @@ public class PlayerCombat : MonoBehaviour, ICombatReceiver
         }
     }
 
-    // --- NEW: This method fires ONLY when the left mouse button is clicked ---
+    //--- This method fires ONLY when the left mouse button is clicked ---
     private void HandleAttackInput()
     {
-        // Ignore attacks if clicking on UI, blocking, or stunned
+        //Ignore attacks if clicking on UI, blocking, or stunned
         if (EventSystem.current != null && EventSystem.current.IsPointerOverGameObject()) return;
         if (healthScript != null && healthScript.IsBlocking) return;
         if (isStunned) return;
 
-        // --- NEW: Ask InputManager if the modifier is held down ---
+        //--- Ask InputManager if the modifier is held down ---
         bool isHeavyModifierDown = InputManager.Instance != null && InputManager.Instance.IsHeavyModifierHeld;
 
         if (isHeavyModifierDown)
@@ -188,7 +188,7 @@ public class PlayerCombat : MonoBehaviour, ICombatReceiver
         
         animator.SetBool("Blocking", false);
         
-        // Ensures we NEVER accidentally unlock movement if we are stunned
+        //Ensures we NEVER accidentally unlock movement if we are stunned
         if (movementScript != null && !isStunned) 
         {
             movementScript.isAttacking = false; 

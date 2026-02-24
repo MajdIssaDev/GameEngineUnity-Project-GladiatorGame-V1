@@ -4,7 +4,7 @@ using System.Collections.Generic;
 public class HitReaction : MonoBehaviour
 {
     [Header("References")]
-    public Animator animator; // --- NEW: Added Animator Reference ---
+    public Animator animator; 
 
     [Header("Setup")]
     public List<Transform> bodyParts = new List<Transform>(); 
@@ -26,7 +26,6 @@ public class HitReaction : MonoBehaviour
     [Header("Physics Settings")]
     public float flinchAngle = 45f;
     
-    // Internal Data
     private class BoneFlinchState
     {
         public Quaternion currentOffset = Quaternion.identity; 
@@ -40,12 +39,13 @@ public class HitReaction : MonoBehaviour
 
     void Start()
     {
-        // --- NEW: Auto-grab Animator if not assigned ---
+        //Automatically fetch the Animator from the parent if we forgot to assign it in the Inspector
         if (animator == null) animator = GetComponentInParent<Animator>();
     }
 
     void LateUpdate()
     {
+        //Use LateUpdate for procedural flinch animations
         List<Transform> bonesToRemove = new List<Transform>();
 
         foreach (var kvp in activeFlinches)
@@ -74,8 +74,6 @@ public class HitReaction : MonoBehaviour
         foreach (var b in bonesToRemove) activeFlinches.Remove(b);
     }
 
-    // --- UPDATED VFX METHODS ---
-
     public void PlayBlockVFX(Vector3 hitPoint, Vector3 attackDirection)
     {
         if (sparkVfxPrefab) 
@@ -83,16 +81,15 @@ public class HitReaction : MonoBehaviour
             Instantiate(sparkVfxPrefab, hitPoint, Quaternion.LookRotation(-attackDirection));
         }
 
-        // --- NEW: ANTI-QUEUING BLOCK ANIMATION LOGIC ---
         if (animator != null)
         {
             AnimatorStateInfo stateInfo = animator.GetCurrentAnimatorStateInfo(0);
             
-            // Check if we are NOT already playing the block reaction.
+            //If the character gets hit multiple times rapidly, we clear old triggers so they don't get stuck
             if (!stateInfo.IsName("BlockReaction")) 
             {
-                animator.ResetTrigger("Blocked"); // Clear phantom triggers
-                animator.SetTrigger("Blocked");   // Trigger the hit
+                animator.ResetTrigger("Blocked"); 
+                animator.SetTrigger("Blocked");   
             }
         }
     }
@@ -106,22 +103,20 @@ public class HitReaction : MonoBehaviour
 
         if (animator != null)
         {
+            //Force the block/parry animation to restart immediately for responsive feedback during perfect parries
             animator.ResetTrigger("Blocked");
             animator.SetTrigger("Blocked");
         }
     }
 
-    // --- STANDARD HIT LOGIC ---
     public void HandleHit(Collider hitCollider, Vector3 hitPoint, Vector3 attackDirection)
     {
-        // 1. Identify the Bone
         Transform hitBone = null;
         if (bodyParts.Contains(hitCollider.transform)) hitBone = hitCollider.transform;
         else hitBone = GetClosestBone(hitPoint);
 
         if (hitBone != null)
         {
-            // 2. SPAWN BLOOD VFX
             if (bloodVfxPrefab)
             {
                 Vector3 spawnPos = hitPoint;
@@ -138,7 +133,6 @@ public class HitReaction : MonoBehaviour
                 Destroy(vfx, 1.0f);
             }
 
-            // 3. FLINCH LOGIC
             if (!activeFlinches.ContainsKey(hitBone))
             {
                 activeFlinches.Add(hitBone, new BoneFlinchState());
@@ -156,7 +150,11 @@ public class HitReaction : MonoBehaviour
     Quaternion CalculateTargetRotation(Transform bone, Vector3 attackDirection)
     {
         Vector3 impactDir = attackDirection.normalized;
+        
+        /*Calculate a perpendicular rotation axis using the Cross Product so the bone physically bends away from
+		the direction of the attack*/
         Vector3 worldRotationAxis = Vector3.Cross(Vector3.up, impactDir);
+        
         if (worldRotationAxis.sqrMagnitude < 0.01f) worldRotationAxis = Vector3.right;
         Vector3 localRotationAxis = bone.InverseTransformDirection(worldRotationAxis);
         return Quaternion.AngleAxis(flinchAngle, localRotationAxis);

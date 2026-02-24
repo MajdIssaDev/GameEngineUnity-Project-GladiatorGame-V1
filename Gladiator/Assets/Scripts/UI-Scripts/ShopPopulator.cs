@@ -4,11 +4,12 @@ using System.Collections.Generic;
 public class ShopPopulator : MonoBehaviour
 {
     [Header("Configuration")]
-    public GameObject buttonPrefab; //Drag your new Button Prefab here
-    public Transform gridContainer; //Drag the "WeaponGrid" object here
+    public GameObject buttonPrefab; 
+    public Transform gridContainer; 
     
     [Header("Inventory")]
-    public List<WeaponData> weaponsToSell; //Drag all your ScriptableObjects here
+    //A list of ScriptableObjects representing the inventory
+    public List<WeaponData> weaponsToSell; 
 
     private void Start()
     {
@@ -17,17 +18,17 @@ public class ShopPopulator : MonoBehaviour
 
     void GenerateShop()
     {
-        //1. Clear existing
+        //Destroy any placeholder or leftover buttons in the grid to prevent memory leaks and duplicate items
         foreach (Transform child in gridContainer) {
             Destroy(child.gameObject);
         }
 
-        //2. Loop through list
+        //Instantiate a new UI button for every weapon in the inventory list
         foreach (WeaponData weapon in weaponsToSell)
         {
             GameObject newButton = Instantiate(buttonPrefab, gridContainer);
             
-            //Force the button to be visible/active.
+            //Failsafe: Ensure the instantiated prefab is active
             newButton.SetActive(true); 
 
             ShopSlot slotScript = newButton.GetComponent<ShopSlot>();

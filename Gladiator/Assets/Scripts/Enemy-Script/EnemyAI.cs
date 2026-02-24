@@ -22,7 +22,6 @@ public class EnemyAI : MonoBehaviour
     [Header("Reposition Logic")]
     public Vector2 waitInterval = new Vector2(2.0f, 5.0f); 
     public Vector2 moveDuration = new Vector2(0.5f, 1.2f); 
-    // Removed dodgeChance
 
     // Internal State
     private NavMeshAgent agent;
@@ -32,11 +31,7 @@ public class EnemyAI : MonoBehaviour
     private bool isRepositioning = false;
     private float currentStrafeDir = 0f; 
     private bool inStrafeRange = false;
-    
-    // Track previous frame to detect when attack STARTS or ENDS
     private bool lastAttackState = false;
-
-    // Animator Hashes
     private int animSpeedID;
     private int animIsStrafingID;
     private int animInputXID;
@@ -59,6 +54,8 @@ public class EnemyAI : MonoBehaviour
         animInputXID = Animator.StringToHash("InputX");
         animInputYID = Animator.StringToHash("InputY");
 
+        /*Give each enemy a random avoidance priority so they naturally spread out and surround the player
+        //instead of merging into a single line*/
         agent.avoidancePriority = Random.Range(30, 70);
         actionTimer = Random.Range(waitInterval.x, waitInterval.y);
     }
@@ -68,15 +65,15 @@ public class EnemyAI : MonoBehaviour
         if (agent == null || !agent.isActiveAndEnabled) return;
         if (playerTarget == null) return;
 
-        // ================================================================
-        //  A. STATE CHANGE DETECTOR (Reset Position on Finish / Interrupt)
-        // ================================================================
+        //A. STATE CHANGE DETECTOR
         if (combatScript.isAttacking != lastAttackState)
         {
             lastAttackState = combatScript.isAttacking;
 
             if (!combatScript.isAttacking)
             {
+                /*When a root-motion attack ends, physically warp the hidden NavMesh cylinder
+                to the character's new animated position so they don't rubber-band back*/
                 anim.applyRootMotion = false;
                 agent.nextPosition = transform.position;
                 agent.updatePosition = true;
@@ -85,9 +82,7 @@ public class EnemyAI : MonoBehaviour
             }
         }
 
-        // ================================================================
-        //  B. STUN CHECK
-        // ================================================================
+        //B. STUN CHECK
         if (combatScript.isStunned) 
         {
             if (!agent.isStopped) 
@@ -99,9 +94,7 @@ public class EnemyAI : MonoBehaviour
             return; 
         }
 
-        // ================================================================
-        //  C. ATTACK BEHAVIOR
-        // ================================================================
+        //C. ATTACK BEHAVIOR
         if (combatScript.isAttacking)
         {
             anim.applyRootMotion = true;
@@ -120,14 +113,14 @@ public class EnemyAI : MonoBehaviour
 
         distanceToPlayer = Vector3.Distance(transform.position, playerTarget.position);
 
-        // 3. TRY ATTACK
+        //3. TRY ATTACK
         if (combatScript.CanAttack(distanceToPlayer))
         {
             combatScript.StartAttack();
             return; 
         }
 
-        // 4. MOVEMENT LOGIC
+        //4. MOVEMENT LOGIC
         bool shouldStrafe = distanceToPlayer <= strafeDistance;
 
         if (shouldStrafe && !inStrafeRange) EnterStrafeMode();
@@ -140,7 +133,7 @@ public class EnemyAI : MonoBehaviour
         else
             HandleChasing();
 
-        // 5. ANIMATION VELOCITY
+        //5. ANIMATION VELOCITY
         float currentSpeed = agent.velocity.magnitude;
         if (agent.hasPath && agent.remainingDistance > agent.stoppingDistance)
         {
@@ -180,7 +173,7 @@ public class EnemyAI : MonoBehaviour
             anim.SetFloat(animInputXID, 0f, 0.2f, Time.deltaTime);
             anim.SetFloat(animInputYID, 0f);
 
-            // --- THE FIX: Enemies now ONLY reposition, they never dodge ---
+            //Force the enemy to periodically sidestep instead of just rushing the player
             if (actionTimer <= 0) 
             {
                 StartRepositioning();
@@ -188,11 +181,13 @@ public class EnemyAI : MonoBehaviour
         }
     }
 
-    void StartRepositioning()
+void StartRepositioning()
     {
         isRepositioning = true;
         agent.isStopped = false;
         agent.speed = strafeSpeed;
+        
+        //Randomly assign 1 or -1 to the strafe direction so the enemy doesn't always dodge the same way
         currentStrafeDir = Random.Range(0, 2) == 0 ? -1f : 1f;
         actionTimer = Random.Range(moveDuration.x, moveDuration.y);
     }
@@ -205,6 +200,7 @@ public class EnemyAI : MonoBehaviour
 
     void MoveToSide()
     {
+        //Calculate the strafe destination using the local right vector
         Vector3 offset = transform.right * currentStrafeDir * 2f;
         Vector3 dest = playerTarget.position + offset;
         agent.SetDestination(dest);
@@ -214,6 +210,7 @@ public class EnemyAI : MonoBehaviour
     void RotateTowards(Vector3 target)
     {
         Vector3 direction = (target - transform.position).normalized;
+        
         direction.y = 0; 
         if(direction != Vector3.zero) 
         {
@@ -225,6 +222,7 @@ public class EnemyAI : MonoBehaviour
     void EnterStrafeMode()
     {
         agent.isStopped = true;
+        
         agent.updateRotation = false;
         anim.SetBool(animIsStrafingID, true);
         actionTimer = Random.Range(waitInterval.x, waitInterval.y);

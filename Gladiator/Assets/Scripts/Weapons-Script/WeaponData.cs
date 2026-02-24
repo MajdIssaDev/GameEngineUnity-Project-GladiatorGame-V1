@@ -19,7 +19,7 @@ public class WeaponData : ScriptableObject
     public AudioClip[] hitSounds; //Flesh hits
     public AudioClip swingSound;
     
-    //--- NEW: Defense Sounds ---
+    //--- Defense Sounds ---
     public AudioClip blockSound;  //Metal Clank
     public AudioClip parrySound;  //High Pitch Ding
 }

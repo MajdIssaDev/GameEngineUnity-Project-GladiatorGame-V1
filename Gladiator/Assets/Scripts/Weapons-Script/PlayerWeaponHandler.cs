@@ -8,7 +8,6 @@ public class PlayerWeaponHandler : MonoBehaviour
     public PlayerCombat playerCombat;
 
     [Header("Testing")]
-    //CHANGE 1: We now use the Data file instead of the raw Prefab
     public WeaponData weaponToEquip; 
 
     [System.Serializable]
@@ -30,7 +29,6 @@ public class PlayerWeaponHandler : MonoBehaviour
         if (weaponToEquip != null) EquipWeapon(weaponToEquip);
     }
 
-    //CHANGE 2: Function now accepts WeaponData
     public void EquipWeapon(WeaponData newWeaponData)
     {
         if (newWeaponData == null) return;
@@ -42,10 +40,7 @@ public class PlayerWeaponHandler : MonoBehaviour
         currentWeaponInstance = Instantiate(newWeaponData.weaponPrefab, weaponSocket.position, weaponSocket.rotation);
         currentWeaponInstance.transform.SetParent(weaponSocket);
 
-        //---------------------------------------------------------
-        //OFFSET LOGIC (Still works the same)
-        //---------------------------------------------------------
-        
+       
         Vector3 finalPos = Vector3.zero;
         Quaternion finalRot = Quaternion.identity;
 
@@ -61,13 +56,9 @@ public class PlayerWeaponHandler : MonoBehaviour
         currentWeaponInstance.transform.localPosition = finalPos;
         currentWeaponInstance.transform.localRotation = finalRot;
 
-        //---------------------------------------------------------
-        //CHANGE 3: THE FIX
-        //Now we can pass BOTH the physical object AND the animator override
-        //---------------------------------------------------------
+
         if (playerCombat != null)
         {
-            //This fixes your "takes 2 parameters but sending 1" error
             playerCombat.EquipNewWeapon(currentWeaponInstance, newWeaponData.animatorOverride);
         }
         

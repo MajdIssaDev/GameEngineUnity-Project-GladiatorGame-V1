@@ -55,7 +55,7 @@ public class PlayerLocomotion : MonoBehaviour
         normalCenter = characterController.center;
     }
 
-    // --- NEW: Subscribe to the Roll event ---
+    // --- Subscribe to the Roll event ---
     void OnEnable()
     {
         if (InputManager.Instance != null)
@@ -64,7 +64,7 @@ public class PlayerLocomotion : MonoBehaviour
         }
     }
 
-    // --- NEW: Unsubscribe from the Roll event ---
+    // --- Unsubscribe from the Roll event ---
     void OnDisable()
     {
         if (InputManager.Instance != null)
@@ -75,7 +75,7 @@ public class PlayerLocomotion : MonoBehaviour
 
     void Update()
     {
-        // 1. GRAVITY
+        //1. GRAVITY
         if (characterController != null && !characterController.enabled) return;
         
         if (!isAttacking)
@@ -91,7 +91,7 @@ public class PlayerLocomotion : MonoBehaviour
             verticalVelocity.y = 0;
         }
         
-        // 2. ROOT MOTION TOGGLE
+        //2. ROOT MOTION TOGGLE
         if (animator != null)
         {
             bool shouldUseRootMotion = isRolling || isAttacking || isStunned;
@@ -101,7 +101,7 @@ public class PlayerLocomotion : MonoBehaviour
             }
         }
 
-        // 3. STATE LOGIC
+        //3. STATE LOGIC
         if (isRolling)
         {
             HandleRollingState();
@@ -136,7 +136,7 @@ public class PlayerLocomotion : MonoBehaviour
 
     void SnapRotationToInput()
     {
-        // --- NEW: Using InputManager ---
+        // --- Using InputManager ---
         float h = InputManager.Instance.RawMovementInput.x;
         float v = InputManager.Instance.RawMovementInput.y;
         Vector3 inputDir = new Vector3(h, 0f, v).normalized;
@@ -158,7 +158,7 @@ public class PlayerLocomotion : MonoBehaviour
             characterController.height = normalHeight;
             characterController.center = normalCenter;
             
-            // --- NEW: Using InputManager ---
+            // --- Using InputManager ---
             float h = InputManager.Instance.RawMovementInput.x;
             float v = InputManager.Instance.RawMovementInput.y;
             currentSpeed = (new Vector3(h, 0, v).magnitude > 0.1f) ? walkSpeed : 0f;
@@ -195,7 +195,7 @@ public class PlayerLocomotion : MonoBehaviour
     {
         bool isLocked = lockOnScript != null && lockOnScript.CurrentTarget != null;
 
-        // --- NEW: Using InputManager ---
+        // --- Using InputManager ---
         float h = InputManager.Instance.MovementInput.x;
         float v = InputManager.Instance.MovementInput.y;
         Vector3 inputDir = new Vector3(h, 0, v).normalized;
@@ -211,7 +211,7 @@ public class PlayerLocomotion : MonoBehaviour
             }
             else
             {
-                // --- NEW: Using InputManager for running ---
+                // --- Using InputManager for running ---
                 finalTargetSpeed = InputManager.Instance.IsRunning ? runSpeed : walkSpeed;
             }
         }

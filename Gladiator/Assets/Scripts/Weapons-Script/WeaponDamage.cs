@@ -65,10 +65,9 @@ public class WeaponDamage : MonoBehaviour
         if (hitParts.Contains(other)) return;
         hitParts.Add(other);
         
-        //--- NEW: Check if we already hit this Enemy Root ---
+        //--- Check if we already hit this Enemy Root ---
         GameObject enemyRoot = other.transform.root.gameObject;
         bool isFirstHitOnEnemy = !damagedEnemies.Contains(enemyRoot);
-        //---------------------------------------------------
 
         //2. Determine Outcome
         HealthScript health = other.GetComponentInParent<HealthScript>();

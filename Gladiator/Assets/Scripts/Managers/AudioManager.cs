@@ -11,11 +11,11 @@ public class AudioManager : MonoBehaviour
 
     [Header("References")]
     public AudioSource musicSource;
-    public GameObject sfxObjectPrefab; // A prefab with just an AudioSource on it
+    public GameObject sfxObjectPrefab; 
 
     private void Awake()
     {
-        // Singleton Pattern (Like GameManager)
+        //Ensures global access to the audio system across all scripts without expensive FindObjectOfType calls
         if (Instance == null)
         {
             Instance = this;
@@ -30,34 +30,36 @@ public class AudioManager : MonoBehaviour
     {
         if (clip == null) return;
 
-        // Create a temporary sound object
-        // (For a bigger game, use "Object Pooling" here instead of Instantiate)
         GameObject soundObj = new GameObject("SFX_" + clip.name);
         soundObj.transform.position = position;
 
         AudioSource source = soundObj.AddComponent<AudioSource>();
         source.clip = clip;
         source.volume = sfxVolume * masterVolume * volumeMultiplier;
-        source.spatialBlend = 1f; // 1 = 3D Sound, 0 = 2D Sound
-        source.maxDistance = 20f; // Sound fades out after 20 meters
+        
+        //Configure 3D audio attenuation (Linear Rolloff) so the sound volume accurately scales down
+        //based on the distance to the AudioListener
+        source.spatialBlend = 1f; 
+        source.maxDistance = 20f; 
         source.rolloffMode = AudioRolloffMode.Linear;
 
         source.Play();
 
-        // Destroy the object after the clip finishes
+        //Destroy the object after the clip finishes
         Destroy(soundObj, clip.length + 0.1f);
     }
     
     public void PlayUI_SFX(AudioClip clip)
     {
-        // Plays sound "globally" (2D) for buttons/UI
         if (clip == null) return;
         
         GameObject soundObj = new GameObject("UI_SFX_" + clip.name);
         AudioSource source = soundObj.AddComponent<AudioSource>();
         source.clip = clip;
         source.volume = sfxVolume * masterVolume;
-        source.spatialBlend = 0f; // 2D Sound
+        
+        //Force 2D spatial blend for UI sounds so they play globally at a constant volume
+        source.spatialBlend = 0f; 
         
         source.Play();
         Destroy(soundObj, clip.length);
