@@ -18,30 +18,63 @@ public class Stats : MonoBehaviour
     
     [Header("Dependencies")]
     public HealthScript healthScript; 
-    private float baseHealth = 100f; 
 
-    private float baseAttackSpeed;
+    // --- Caching Variables ---
+    private float initialStrength;
+    private float initialDefence;
+    private float initialRegenSpeed;
+    private float initialAttackSpeed;
+    private float initialMaxEnergy;
+    private float initialMaxHealth;
     
+    // This is used for the slow effect debuff to remember current max speed
+    private float currentBaseAttackSpeed; 
+    private bool isInitialized = false;
+
+    private void Awake()
+    {
+        InitializeBaseStats();
+    }
+
     private void Start()
     {
+        // Fallback in case Awake missed it, though Awake runs first.
+        InitializeBaseStats(); 
+    }
+
+    private void InitializeBaseStats()
+    {
+        if (isInitialized) return;
+
         if (healthScript == null) healthScript = GetComponent<HealthScript>();
+
+        // Cache the inspector values the moment the object is created
+        initialStrength = strength;
+        initialDefence = defence;
+        initialRegenSpeed = regenSpeed;
+        initialAttackSpeed = attackSpeed;
+        initialMaxEnergy = maxEnergy;
         
-        //Cache the base attack speed to prevent permanent stat degradation when applying temporary debuffs
-        baseAttackSpeed = attackSpeed; 
+        if (healthScript != null) initialMaxHealth = healthScript.getMaxHealth();
+        else initialMaxHealth = 100f;
+
+        currentBaseAttackSpeed = attackSpeed;
+        isInitialized = true;
     }
 
     //Procedurally generate enemy stats based on the current wave round
     public void SetLevel(int targetLevel)
     {
-        strength = 1;
-        defence = 0;
-        regenSpeed = 1;
-        attackSpeed = 1;
-        maxEnergy = 100f; 
+        InitializeBaseStats(); // Safety check
 
-        baseAttackSpeed = 1; 
-
-        float calculatedMaxHealth = baseHealth;
+        // Reset to the PREFAB'S base stats, not hardcoded 1s and 0s
+        strength = initialStrength;
+        defence = initialDefence;
+        regenSpeed = initialRegenSpeed;
+        attackSpeed = initialAttackSpeed;
+        maxEnergy = initialMaxEnergy;
+        
+        float calculatedMaxHealth = initialMaxHealth;
         int pointsToSpend = targetLevel - 1;
 
         for (int i = 0; i < pointsToSpend; i++)
@@ -54,7 +87,7 @@ public class Stats : MonoBehaviour
                 case 1: defence += 1f; break;
                 case 2: regenSpeed += 0.5f; break;
                 case 3: 
-                    //Cap attack speed at 3.0 to prevent animation clipping
+                    //Cap attack speed relative to base, or hard cap at 3.0
                     if (attackSpeed < 3.0f) attackSpeed += 0.1f;
                     else strength += 1f; 
                     break;
@@ -63,7 +96,7 @@ public class Stats : MonoBehaviour
             }
         }
         
-        baseAttackSpeed = attackSpeed;
+        currentBaseAttackSpeed = attackSpeed;
 
         if (healthScript != null)
         {
@@ -75,16 +108,19 @@ public class Stats : MonoBehaviour
     //Reverse-engineer the current level from raw stat values
     public int GetLevel()
     {
-        float strUpgrades = strength - 1;
-        float defUpgrades = defence;
-        float regUpgrades = (regenSpeed - 1) * 2;
-        float atkUpgrades = (attackSpeed - 1) * 10;
-        float energyUpgrades = (maxEnergy - 100) / 10f; 
+        InitializeBaseStats();
+
+        // Calculate upgrades based on the initial prefab values, not hardcoded 1s and 100s
+        float strUpgrades = strength - initialStrength;
+        float defUpgrades = defence - initialDefence;
+        float regUpgrades = (regenSpeed - initialRegenSpeed) * 2;
+        float atkUpgrades = (attackSpeed - initialAttackSpeed) * 10;
+        float energyUpgrades = (maxEnergy - initialMaxEnergy) / 10f; 
 
         float healthUpgrades = 0;
         if (healthScript != null)
         {
-            healthUpgrades = (healthScript.getMaxHealth() - baseHealth) / 10f;
+            healthUpgrades = (healthScript.getMaxHealth() - initialMaxHealth) / 10f;
         }
 
         float totalUpgrades = strUpgrades + defUpgrades + regUpgrades + atkUpgrades + healthUpgrades + energyUpgrades;
@@ -100,23 +136,13 @@ public class Stats : MonoBehaviour
     {
         switch (type)
         {
-            case StatType.Strength:
-                strength += 1;
-                break;
-                
-            case StatType.Defence:
-                defence += 1;
-                break;
-                
+            case StatType.Strength: strength += 1; break;
+            case StatType.Defence: defence += 1; break;
             case StatType.AttackSpeed:
                 attackSpeed += 0.1f; 
-                baseAttackSpeed = attackSpeed; 
+                currentBaseAttackSpeed = attackSpeed; 
                 break;
-                
-            case StatType.Regen:
-                regenSpeed += 0.5f;
-                break;
-                
+            case StatType.Regen: regenSpeed += 0.5f; break;
             case StatType.Health:
                 if (healthScript != null)
                 {
@@ -145,13 +171,11 @@ public class Stats : MonoBehaviour
     
     public void ApplySlowEffect(float percentage)
     {
-        //Calculate debuffs against the cached base speed; it prevents exponential stacking
-        attackSpeed = baseAttackSpeed * (1.0f - percentage);
+        attackSpeed = currentBaseAttackSpeed * (1.0f - percentage);
     }
 
     public void RemoveSlowEffect()
     {
-        //Restore the original speed from the cache to cleanly end the debuff state
-        attackSpeed = baseAttackSpeed;
+        attackSpeed = currentBaseAttackSpeed;
     }
 }

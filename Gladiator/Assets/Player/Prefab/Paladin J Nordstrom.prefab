@@ -348,6 +348,10 @@ PrefabInstance:
       value: 
       objectReference: {fileID: 9100000, guid: cbe76beadff4012448d78e42da7077a7, type: 2}
     - target: {fileID: 5866666021909216657, guid: da6a0a5a856d6e242815376e9e80ccfe, type: 3}
+      propertyPath: m_UpdateMode
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5866666021909216657, guid: da6a0a5a856d6e242815376e9e80ccfe, type: 3}
       propertyPath: m_ApplyRootMotion
       value: 0
       objectReference: {fileID: 0}
@@ -509,6 +513,9 @@ MonoBehaviour:
   movementScript: {fileID: 7484345045062120116}
   stats: {fileID: 0}
   blockCooldown: 1
+  blockStartupTime: 0.1
+  lightAttackCost: 10
+  heavyAttackCost: 25
 --- !u!114 &1791110732975091923
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -526,7 +533,6 @@ MonoBehaviour:
     m_Bits: 64
   detectionRadius: 40
   maxLockOnDistance: 25
-  lockKey: 113
 --- !u!114 &7484345045062120116
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -559,6 +565,7 @@ MonoBehaviour:
   deceleration: 8
   isAttacking: 0
   isRolling: 0
+  isStunned: 0
 --- !u!114 &7572183670210437428
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -591,6 +598,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 5280670e262814148aa8451323e4064f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  animator: {fileID: 0}
   bodyParts:
   - {fileID: 8678474993104756252}
   - {fileID: 7466855591793834440}
@@ -619,10 +627,9 @@ MonoBehaviour:
   currentHealth: 100
   maxHealth: 100
   stats: {fileID: 7572183670210437428}
-  playerHudSlider: {fileID: 0}
   enemyFloatingBar: {fileID: 0}
   currentEnergy: 0
-  energyHudSlider: {fileID: 0}
+  playerCombat: {fileID: 0}
   IsBlocking: 0
   isInvincible: 0
   IsDead: 0

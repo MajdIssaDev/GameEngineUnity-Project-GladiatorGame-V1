@@ -102,11 +102,6 @@ public class WeaponDamage : MonoBehaviour
                     break;
             }
         }
-        else 
-        {
-            //Fallback for objects without HitReaction
-            if (isFirstHitOnEnemy) PlayRandomHitSound(safeHitPoint);
-        }
 
         //4. Apply Damage Logic
         if (isFirstHitOnEnemy)
@@ -166,6 +161,7 @@ public class WeaponDamage : MonoBehaviour
         }
     }
 
+    // If found more hit sounds, play random
     void PlayRandomHitSound(Vector3 position)
     {
         if (hitSounds != null && hitSounds.Length > 0)

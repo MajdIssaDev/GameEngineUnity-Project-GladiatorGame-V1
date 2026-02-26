@@ -947,6 +947,10 @@ PrefabInstance:
       value: 
       objectReference: {fileID: 9100000, guid: cbe76beadff4012448d78e42da7077a7, type: 2}
     - target: {fileID: 5866666021909216657, guid: 27b5223b5d914ac40a8fbd5418619246, type: 3}
+      propertyPath: m_UpdateMode
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5866666021909216657, guid: 27b5223b5d914ac40a8fbd5418619246, type: 3}
       propertyPath: m_ApplyRootMotion
       value: 0
       objectReference: {fileID: 0}
@@ -1160,6 +1164,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 43fe79f8974e1a748b9ff3a12df667b5, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  mass: 3
+  damping: 5
 --- !u!114 &7046996746099456303
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1172,13 +1178,12 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 35f493927ebdcb443b96a6c8277549f5, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  currentHealth: 100
-  maxHealth: 100
+  currentHealth: 200
+  maxHealth: 200
   stats: {fileID: 6586336041423659222}
-  playerHudSlider: {fileID: 0}
   enemyFloatingBar: {fileID: 0}
   currentEnergy: 0
-  energyHudSlider: {fileID: 0}
+  playerCombat: {fileID: 0}
   IsBlocking: 0
   isInvincible: 0
   IsDead: 0
@@ -1195,10 +1200,10 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   characterName: Berserker
-  strength: 1
-  defence: 0
-  regenSpeed: 1
-  attackSpeed: 1
+  strength: 5
+  defence: 5
+  regenSpeed: 3
+  attackSpeed: 0.8
   maxEnergy: 100
   energyRegenRate: 10
   healthScript: {fileID: 7046996746099456303}
@@ -1214,6 +1219,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 5280670e262814148aa8451323e4064f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  animator: {fileID: 0}
   bodyParts:
   - {fileID: 1031595082569904553}
   - {fileID: 1344147374755732032}
@@ -1318,7 +1324,6 @@ MonoBehaviour:
   minCrowdDistance: 2
   waitInterval: {x: 2, y: 5}
   moveDuration: {x: 0.5, y: 1.2}
-  dodgeChance: 30
 --- !u!114 &6569252141881074804
 MonoBehaviour:
   m_ObjectHideFlags: 0

@@ -170,7 +170,6 @@ MonoBehaviour:
   minCrowdDistance: 2
   waitInterval: {x: 2, y: 5}
   moveDuration: {x: 0.5, y: 1.2}
-  dodgeChance: 30
 --- !u!114 &4249252775134680700
 MonoBehaviour:
   m_ObjectHideFlags: 0
